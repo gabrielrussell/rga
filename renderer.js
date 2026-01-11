@@ -1,11 +1,11 @@
 /**
- * Renderer for graph nodes using HTML5 Canvas
+ * Renderer for graph nodes using HTML5 Canvas with layer-based rendering
+ * to preserve layer structure across radial repeats
  */
 export class Renderer {
     constructor(viewport, canvasSize) {
         this.viewport = viewport; // { minX, maxX, minY, maxY }
         this.canvasSize = canvasSize; // pixel dimensions (square canvas)
-        this.renderCache = new Map(); // node id -> canvas
     }
 
     /**
@@ -36,17 +36,36 @@ export class Renderer {
         const ctx = targetCanvas.getContext('2d');
         ctx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
 
-        if (node.isRoot()) {
-            this.renderRootNode(ctx);
-        } else {
-            this.renderNonRootNode(node, ctx);
+        // Get layers for this node
+        const layers = this.getNodeLayers(node);
+
+        // Draw all layers in order
+        for (const layer of layers) {
+            ctx.drawImage(layer, 0, 0);
         }
     }
 
     /**
-     * Render the root node (black circle, radius 1.0)
+     * Get rendering layers for a node
+     * Returns an array of canvases, each representing a layer
      */
-    renderRootNode(ctx) {
+    getNodeLayers(node) {
+        if (node.isRoot()) {
+            return this.getRootLayers();
+        } else {
+            return this.getNonRootLayers(node);
+        }
+    }
+
+    /**
+     * Get layers for root node (single layer: black circle)
+     */
+    getRootLayers() {
+        const canvas = document.createElement('canvas');
+        canvas.width = this.canvasSize;
+        canvas.height = this.canvasSize;
+        const ctx = canvas.getContext('2d');
+
         const center = this.mathToPixel(0, 0);
         const radius = this.mathToPixelDistance(1.0);
 
@@ -54,50 +73,43 @@ export class Renderer {
         ctx.beginPath();
         ctx.arc(center.x, center.y, radius, 0, 2 * Math.PI);
         ctx.fill();
+
+        return [canvas];
     }
 
     /**
-     * Render a non-root node using compositional rendering
+     * Get layers for non-root node
+     * Returns base layers + transformed/inverted transform layers
      */
-    renderNonRootNode(node, targetCtx) {
+    getNonRootLayers(node) {
         const graph = this.getGraphFromNode(node);
 
-        // Create temporary canvases for base and transform
-        const baseCanvas = document.createElement('canvas');
-        baseCanvas.width = this.canvasSize;
-        baseCanvas.height = this.canvasSize;
-
-        const transformCanvas = document.createElement('canvas');
-        transformCanvas.width = this.canvasSize;
-        transformCanvas.height = this.canvasSize;
-
-        // Recursively render base parent
+        // Get base parent layers
         const baseParentNode = graph.getNode(node.baseParent);
-        this.renderNode(baseParentNode, baseCanvas);
+        const baseLayers = this.getNodeLayers(baseParentNode);
 
-        // Recursively render transform parent
+        // Get transform parent layers
         const transformParentNode = graph.getNode(node.transformParent);
-        this.renderNode(transformParentNode, transformCanvas);
+        const transformLayers = this.getNodeLayers(transformParentNode);
 
-        // Apply transformations to transform canvas
-        const transformedCanvas = this.applyTransformations(
-            transformCanvas,
-            node.scale,
-            node.radialRadius,
-            node.radialCount,
-            node.rotation
-        );
+        // Apply transformations to each transform layer, invert, and collect
+        const transformedLayers = transformLayers.map(layer => {
+            const transformed = this.applyTransformations(
+                layer,
+                node.scale,
+                node.radialRadius,
+                node.radialCount,
+                node.rotation
+            );
+            return this.invertColors(transformed);
+        });
 
-        // Invert colors of transformed canvas
-        const invertedCanvas = this.invertColors(transformedCanvas);
-
-        // Composite: draw base, then draw inverted transform on top
-        targetCtx.drawImage(baseCanvas, 0, 0);
-        targetCtx.drawImage(invertedCanvas, 0, 0);
+        // Return base layers followed by transformed/inverted transform layers
+        return [...baseLayers, ...transformedLayers];
     }
 
     /**
-     * Apply transformation pipeline to a canvas
+     * Apply transformation pipeline to a canvas (single layer)
      */
     applyTransformations(sourceCanvas, scale, radialRadius, radialCount, rotation) {
         const resultCanvas = document.createElement('canvas');
@@ -118,6 +130,7 @@ export class Renderer {
         }
 
         // Radial repeat with count >= 1
+        // Now all copies of this layer are drawn before moving to the next layer
         const center = this.canvasSize / 2;
         const radiusPixels = this.mathToPixelDistance(radialRadius);
 
@@ -184,11 +197,8 @@ export class Renderer {
 
     /**
      * Helper to get the graph from a node
-     * This is a workaround - we'll store a reference to the graph in the renderer
      */
     getGraphFromNode(node) {
-        // We need access to the graph to look up parent nodes
-        // This will be set by the main.js before rendering
         if (!this.graph) {
             throw new Error('Graph not set in renderer');
         }
