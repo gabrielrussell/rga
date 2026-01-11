@@ -54,6 +54,23 @@ function clearError() {
     errorDisplay.classList.remove('visible');
 }
 
+// Apply color settings from JSON data
+function applyColorSettings(jsonData) {
+    if (jsonData.color_settings) {
+        const settings = jsonData.color_settings;
+
+        if (settings.base_color) {
+            colorPalette.setBaseColor(settings.base_color);
+            baseColorPicker.value = settings.base_color;
+        }
+
+        if (settings.enabled !== undefined) {
+            colorEnabled = settings.enabled;
+            colorEnabledCheckbox.checked = settings.enabled;
+        }
+    }
+}
+
 // Initialize with simple root node
 function initializeNewGraph() {
     currentGraph = new Graph();
@@ -354,6 +371,7 @@ exampleSelect.addEventListener('change', async (e) => {
         }
         const jsonData = await response.json();
         currentGraph = Graph.fromJSON(jsonData);
+        applyColorSettings(jsonData);
         selectedNodeId = null;
         updateUI();
         exampleSelect.value = ''; // Reset selector
@@ -383,6 +401,7 @@ importJsonInput.addEventListener('change', async (e) => {
         const text = await file.text();
         const jsonData = JSON.parse(text);
         currentGraph = Graph.fromJSON(jsonData);
+        applyColorSettings(jsonData);
         selectedNodeId = null;
         updateUI();
         // Reset the file input so the same file can be loaded again if needed
@@ -410,7 +429,15 @@ exportJsonButton.addEventListener('click', () => {
         return obj;
     });
 
-    const json = JSON.stringify({ nodes }, null, 2);
+    const exportData = {
+        nodes,
+        color_settings: {
+            enabled: colorEnabled,
+            base_color: colorPalette.baseColor
+        }
+    };
+
+    const json = JSON.stringify(exportData, null, 2);
 
     // Download as file
     const blob = new Blob([json], { type: 'application/json' });
