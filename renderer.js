@@ -154,7 +154,7 @@ export class Renderer {
 
     /**
      * Apply final colors to canvas based on idMatrix
-     * Odd ID (parity 1) = white, Even ID (parity 0) = color based on ID
+     * Odd ID (parity 1) = alternate white/black, Even ID (parity 0) = color based on ID
      */
     applyFinalColors(canvas, idMatrix, depthMatrix) {
         const ctx = canvas.getContext('2d');
@@ -171,10 +171,19 @@ export class Renderer {
             } else {
                 const parity = id % 2;
                 if (parity === 1) {
-                    // Odd parity - render as white
-                    data[pixelIndex] = 255;
-                    data[pixelIndex + 1] = 255;
-                    data[pixelIndex + 2] = 255;
+                    // Odd parity - alternate between white and black based on ID
+                    const oddIndex = Math.floor(id / 2);
+                    const isWhite = oddIndex % 2 === 0;
+
+                    if (isWhite) {
+                        data[pixelIndex] = 255;
+                        data[pixelIndex + 1] = 255;
+                        data[pixelIndex + 2] = 255;
+                    } else {
+                        data[pixelIndex] = 0;
+                        data[pixelIndex + 1] = 0;
+                        data[pixelIndex + 2] = 0;
+                    }
                     data[pixelIndex + 3] = 255;
                 } else {
                     // Even parity - render with color based on ID
