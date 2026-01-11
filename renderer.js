@@ -100,18 +100,19 @@ export class Renderer {
             }
         }
 
-        // Collect unique even IDs for per-image color mapping
-        const uniqueEvenIds = new Set();
+        // Collect ALL unique IDs for per-image sequential color mapping
+        const uniqueIds = new Set();
         for (let i = 0; i < finalIdMatrix.length; i++) {
             const id = finalIdMatrix[i];
-            if (id !== 0xFFFFFFFF && id % 2 === 0) {
-                uniqueEvenIds.add(id);
+            if (id !== 0xFFFFFFFF) {
+                uniqueIds.add(id);
             }
         }
 
         // Create mapping from ID to sequential color index
+        // All unique regions get sequential colors: 0, 1, 2, 3...
         const idToColorIndex = new Map();
-        const sortedIds = Array.from(uniqueEvenIds).sort((a, b) => a - b);
+        const sortedIds = Array.from(uniqueIds).sort((a, b) => a - b);
         sortedIds.forEach((id, index) => {
             idToColorIndex.set(id, index);
         });
@@ -216,14 +217,14 @@ export class Renderer {
             } else {
                 const parity = id % 2;
 
+                // Look up sequential color index for this ID
+                const colorIndex = idToColorIndex.get(id);
+
                 // Determine which color mode to use
                 let colorMode = null;
-                let colorIndex = null;
 
                 if (parity === 0) {
                     // Even parity - check for first/last index overrides
-                    colorIndex = idToColorIndex.get(id);
-
                     if (colorIndex === 0 && this.colorModes.firstIndex !== 'inherit') {
                         colorMode = this.colorModes.firstIndex;
                     } else if (colorIndex === maxColorIndex && this.colorModes.lastIndex !== 'inherit') {
@@ -559,37 +560,20 @@ export class Renderer {
                 return isWhite ? { r: 255, g: 255, b: 255 } : { r: 0, g: 0, b: 0 };
 
             case 'regular':
-                // Regular color from palette
-                if (parity === 0 && colorIndex !== null) {
-                    const color = this.useColor
-                        ? this.colorPalette.getColorForLayer(colorIndex)
-                        : '#000000';
-                    return this.hexToRgb(color);
-                }
-                // For odd parity with regular mode, use large offset to avoid overlap with even parity
-                // Palette has 28 colors (4 base + 24 variants), so offset by 100 to be safe
-                const oddColorIndexReg = Math.floor(id / 2) + 100;
-                const colorReg = this.useColor
-                    ? this.colorPalette.getColorForLayer(oddColorIndexReg)
+                // Regular color from palette - just use sequential color index
+                // No math needed - colorIndex is already assigned sequentially for all IDs
+                const color = this.useColor
+                    ? this.colorPalette.getColorForLayer(colorIndex)
                     : '#000000';
-                return this.hexToRgb(colorReg);
+                return this.hexToRgb(color);
 
             case 'alternative':
-                // Desaturated color from palette
-                if (parity === 0 && colorIndex !== null) {
-                    const color = this.useColor
-                        ? this.colorPalette.getColorForLayer(colorIndex)
-                        : '#000000';
-                    const desaturated = this.desaturateColor(color);
-                    return this.hexToRgb(desaturated);
-                }
-                // For odd parity with alternative mode, use large offset to avoid overlap with even parity
-                const oddColorIndexAlt = Math.floor(id / 2) + 100;
+                // Desaturated color from palette - just use sequential color index
                 const colorAlt = this.useColor
-                    ? this.colorPalette.getColorForLayer(oddColorIndexAlt)
+                    ? this.colorPalette.getColorForLayer(colorIndex)
                     : '#000000';
-                const desaturatedAlt = this.desaturateColor(colorAlt);
-                return this.hexToRgb(desaturatedAlt);
+                const desaturated = this.desaturateColor(colorAlt);
+                return this.hexToRgb(desaturated);
 
             default:
                 return { r: 0, g: 0, b: 0 };
