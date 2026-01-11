@@ -389,12 +389,44 @@ deleteNodeButton.addEventListener('click', () => {
     updateUI();
 });
 
+// Invalidate cache for a node and all nodes that depend on it
+function invalidateNodeCache(nodeId) {
+    if (!nodeId) return;
+
+    // Find all nodes that depend on this node (directly or indirectly)
+    const nodesToInvalidate = new Set([nodeId]);
+    let changed = true;
+
+    while (changed) {
+        changed = false;
+        for (const node of currentGraph.getAllNodes()) {
+            if (!nodesToInvalidate.has(node.id)) {
+                if (nodesToInvalidate.has(node.baseParent) || nodesToInvalidate.has(node.transformParent)) {
+                    nodesToInvalidate.add(node.id);
+                    changed = true;
+                }
+            }
+        }
+    }
+
+    // Remove from both renderer caches
+    for (const id of nodesToInvalidate) {
+        if (renderer && renderer.layerCache) {
+            renderer.layerCache.delete(id);
+        }
+        if (fullsizeRenderer && fullsizeRenderer.layerCache) {
+            fullsizeRenderer.layerCache.delete(id);
+        }
+    }
+}
+
 // Slider event listeners
 scaleSlider.addEventListener('input', (e) => {
     if (selectedNodeId === null) return;
     const node = currentGraph.getNode(selectedNodeId);
     node.scale = parseFloat(e.target.value);
     scaleValue.textContent = node.scale.toFixed(2);
+    invalidateNodeCache(selectedNodeId);
     updateThumbnails();
     updateFullsizePreview();
 });
@@ -404,6 +436,7 @@ radialRadiusSlider.addEventListener('input', (e) => {
     const node = currentGraph.getNode(selectedNodeId);
     node.radialRadius = parseFloat(e.target.value);
     radialRadiusValue.textContent = node.radialRadius.toFixed(2);
+    invalidateNodeCache(selectedNodeId);
     updateThumbnails();
     updateFullsizePreview();
 });
@@ -413,6 +446,7 @@ radialCountSlider.addEventListener('input', (e) => {
     const node = currentGraph.getNode(selectedNodeId);
     node.radialCount = parseInt(e.target.value);
     radialCountValue.textContent = node.radialCount;
+    invalidateNodeCache(selectedNodeId);
     updateThumbnails();
     updateFullsizePreview();
 });
@@ -422,6 +456,7 @@ rotationSlider.addEventListener('input', (e) => {
     const node = currentGraph.getNode(selectedNodeId);
     node.rotation = parseFloat(e.target.value);
     rotationValue.textContent = node.rotation + '°';
+    invalidateNodeCache(selectedNodeId);
     updateThumbnails();
     updateFullsizePreview();
 });
@@ -431,6 +466,7 @@ baseParentSelect.addEventListener('change', (e) => {
     if (selectedNodeId === null) return;
     const node = currentGraph.getNode(selectedNodeId);
     node.baseParent = parseInt(e.target.value);
+    invalidateNodeCache(selectedNodeId);
     updateThumbnails();
     updateFullsizePreview();
 });
@@ -439,6 +475,7 @@ transformParentSelect.addEventListener('change', (e) => {
     if (selectedNodeId === null) return;
     const node = currentGraph.getNode(selectedNodeId);
     node.transformParent = parseInt(e.target.value);
+    invalidateNodeCache(selectedNodeId);
     updateThumbnails();
     updateFullsizePreview();
 });
