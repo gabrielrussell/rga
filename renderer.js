@@ -55,6 +55,7 @@ export class Renderer {
     /**
      * Render a node to the given canvas
      * Composites all layers and applies final coloring based on idMatrix
+     * Returns statistics for debugging
      */
     renderNode(node, targetCanvas) {
         const ctx = targetCanvas.getContext('2d');
@@ -83,6 +84,57 @@ export class Renderer {
 
         // Apply final coloring based on parity and depth
         this.applyFinalColors(targetCanvas, finalIdMatrix, finalDepthMatrix);
+
+        // Store matrices for debugging
+        this.lastIdMatrix = finalIdMatrix;
+        this.lastDepthMatrix = finalDepthMatrix;
+
+        // Return statistics
+        return this.computePixelStats(finalIdMatrix, finalDepthMatrix);
+    }
+
+    /**
+     * Compute statistics about pixel IDs and depths
+     */
+    computePixelStats(idMatrix, depthMatrix) {
+        const uniqueIds = new Set();
+        const depthCounts = new Map(); // depth -> {even: count, odd: count}
+        let evenCount = 0;
+        let oddCount = 0;
+        let transparentCount = 0;
+
+        for (let i = 0; i < idMatrix.length; i++) {
+            const id = idMatrix[i];
+            if (id === 0xFFFFFFFF) {
+                transparentCount++;
+            } else {
+                uniqueIds.add(id);
+                const parity = id % 2;
+                const depth = depthMatrix[i];
+
+                if (!depthCounts.has(depth)) {
+                    depthCounts.set(depth, { even: 0, odd: 0 });
+                }
+
+                if (parity === 0) {
+                    evenCount++;
+                    depthCounts.get(depth).even++;
+                } else {
+                    oddCount++;
+                    depthCounts.get(depth).odd++;
+                }
+            }
+        }
+
+        return {
+            uniqueIds: uniqueIds.size,
+            evenCount,
+            oddCount,
+            transparentCount,
+            depthCounts: Array.from(depthCounts.entries())
+                .sort((a, b) => a[0] - b[0])
+                .map(([depth, counts]) => ({ depth, ...counts }))
+        };
     }
 
     /**

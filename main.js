@@ -32,6 +32,7 @@ const deleteNodeButton = document.getElementById('delete-node-button');
 const thumbnailGrid = document.getElementById('thumbnail-grid');
 const fullsizePreview = document.getElementById('fullsize-preview');
 const fullsizeCanvas = document.getElementById('fullsize-canvas');
+const pixelStats = document.getElementById('pixel-stats');
 const colorEnabledCheckbox = document.getElementById('color-enabled-checkbox');
 const baseColorPicker = document.getElementById('base-color-picker');
 
@@ -139,10 +140,29 @@ function updateFullsizePreview() {
     fullsizeRenderer.setGraph(currentGraph);
 
     try {
-        fullsizeRenderer.renderNode(node, fullsizeCanvas);
+        const stats = fullsizeRenderer.renderNode(node, fullsizeCanvas);
+        displayPixelStats(stats);
     } catch (error) {
         showError(`Error rendering fullsize node ${node.id}: ${error.message}`);
     }
+}
+
+// Display pixel statistics
+function displayPixelStats(stats) {
+    let html = '<strong>Pixel Statistics:</strong><br><br>';
+    html += `Unique Pixel IDs: ${stats.uniqueIds.toLocaleString()}<br>`;
+    html += `Even parity (colored): ${stats.evenCount.toLocaleString()} pixels<br>`;
+    html += `Odd parity (white): ${stats.oddCount.toLocaleString()} pixels<br>`;
+    html += `Transparent: ${stats.transparentCount.toLocaleString()} pixels<br><br>`;
+
+    html += '<strong>By Depth:</strong><br>';
+    for (const depthInfo of stats.depthCounts) {
+        const total = depthInfo.even + depthInfo.odd;
+        html += `Depth ${depthInfo.depth}: ${total.toLocaleString()} pixels `;
+        html += `(${depthInfo.even.toLocaleString()} colored, ${depthInfo.odd.toLocaleString()} white)<br>`;
+    }
+
+    pixelStats.innerHTML = html;
 }
 
 // Update the editor panel with selected node's values
