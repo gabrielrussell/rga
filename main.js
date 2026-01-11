@@ -95,6 +95,11 @@ function initializeNewGraph() {
     currentGraph.addNode(rootNode);
     currentGraph.rootNode = rootNode;
     selectedNodeId = null;
+
+    // Clear caches when creating new graph
+    if (renderer) renderer.clearCache();
+    if (fullsizeRenderer) fullsizeRenderer.clearCache();
+
     updateUI();
 }
 
@@ -500,6 +505,11 @@ exampleSelect.addEventListener('change', async (e) => {
         currentGraph = Graph.fromJSON(jsonData);
         applyColorSettings(jsonData);
         selectedNodeId = null;
+
+        // Clear caches when loading new graph
+        if (renderer) renderer.clearCache();
+        if (fullsizeRenderer) fullsizeRenderer.clearCache();
+
         updateUI();
         exampleSelect.value = ''; // Reset selector
     } catch (error) {
@@ -530,6 +540,11 @@ importJsonInput.addEventListener('change', async (e) => {
         currentGraph = Graph.fromJSON(jsonData);
         applyColorSettings(jsonData);
         selectedNodeId = null;
+
+        // Clear caches when loading new graph
+        if (renderer) renderer.clearCache();
+        if (fullsizeRenderer) fullsizeRenderer.clearCache();
+
         updateUI();
         // Reset the file input so the same file can be loaded again if needed
         importJsonInput.value = '';
