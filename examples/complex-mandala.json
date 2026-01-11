@@ -1,0 +1,118 @@
+{
+  "nodes": [
+    {
+      "id": 0,
+      "comment": "Root circle"
+    },
+    {
+      "id": 1,
+      "base_parent": 0,
+      "transform_parent": 0,
+      "scale": 0.35,
+      "radial_radius": 0.6,
+      "radial_count": 6,
+      "rotation": 0,
+      "comment": "Basic shape 1: Six small circles"
+    },
+    {
+      "id": 2,
+      "base_parent": 0,
+      "transform_parent": 0,
+      "scale": 0.45,
+      "radial_radius": 0,
+      "radial_count": 0,
+      "rotation": 0,
+      "comment": "Basic shape 2: Medium center circle"
+    },
+    {
+      "id": 3,
+      "base_parent": 0,
+      "transform_parent": 0,
+      "scale": 0.25,
+      "radial_radius": 0.8,
+      "radial_count": 12,
+      "rotation": 15,
+      "comment": "Basic shape 3: Twelve tiny circles with rotation"
+    },
+    {
+      "id": 4,
+      "base_parent": 0,
+      "transform_parent": 0,
+      "scale": 0.4,
+      "radial_radius": 0.5,
+      "radial_count": 3,
+      "rotation": 30,
+      "comment": "Basic shape 4: Three circles at 30° rotation"
+    },
+    {
+      "id": 5,
+      "base_parent": 1,
+      "transform_parent": 2,
+      "scale": 0.65,
+      "radial_radius": 0,
+      "radial_count": 0,
+      "rotation": 0,
+      "comment": "Grandparent 1: Six-circle pattern with center"
+    },
+    {
+      "id": 6,
+      "base_parent": 3,
+      "transform_parent": 4,
+      "scale": 0.7,
+      "radial_radius": 0,
+      "radial_count": 0,
+      "rotation": 45,
+      "comment": "Grandparent 2: Twelve-circle with triplet overlay"
+    },
+    {
+      "id": 7,
+      "base_parent": 1,
+      "transform_parent": 3,
+      "scale": 0.6,
+      "radial_radius": 0,
+      "radial_count": 0,
+      "rotation": 15,
+      "comment": "Grandparent 3: Six-circle with twelve-circle overlay"
+    },
+    {
+      "id": 8,
+      "base_parent": 2,
+      "transform_parent": 4,
+      "scale": 0.75,
+      "radial_radius": 0,
+      "radial_count": 0,
+      "rotation": 60,
+      "comment": "Grandparent 4: Center with triplet overlay"
+    },
+    {
+      "id": 9,
+      "base_parent": 5,
+      "transform_parent": 6,
+      "scale": 0.5,
+      "radial_radius": 0.7,
+      "radial_count": 6,
+      "rotation": 0,
+      "comment": "Parent 1: Six copies of combined grandparents 1 & 2"
+    },
+    {
+      "id": 10,
+      "base_parent": 7,
+      "transform_parent": 8,
+      "scale": 0.55,
+      "radial_radius": 0.75,
+      "radial_count": 6,
+      "rotation": 30,
+      "comment": "Parent 2: Six copies of combined grandparents 3 & 4, rotated 30°"
+    },
+    {
+      "id": 11,
+      "base_parent": 9,
+      "transform_parent": 10,
+      "scale": 0.8,
+      "radial_radius": 0,
+      "radial_count": 0,
+      "rotation": 0,
+      "comment": "Final mandala: Both parent patterns combined"
+    }
+  ]
+}
