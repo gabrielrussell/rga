@@ -6,6 +6,7 @@ import { ColorPalette } from './color.js';
 const VIEWPORT = { minX: -2, maxX: 2, minY: -2, maxY: 2 };
 const CANVAS_SIZE = 800;
 const THUMBNAIL_SIZE = 200;
+const VERSION = '2fe26f2'; // Update with: git rev-parse --short HEAD
 
 // UI elements
 const errorDisplay = document.getElementById('error-display');
@@ -149,7 +150,21 @@ function updateFullsizePreview() {
 
 // Display pixel statistics
 function displayPixelStats(stats) {
-    let html = '<strong>Pixel Statistics:</strong><br><br>';
+    const node = currentGraph.getNode(selectedNodeId);
+    const timestamp = new Date().toISOString();
+
+    let html = '<strong>Render Metadata:</strong><br>';
+    html += `Version: ${VERSION}<br>`;
+    html += `Node: ${node.id}${node.isRoot() ? ' (Root)' : ''}<br>`;
+    if (!node.isRoot()) {
+        html += `Base Parent: ${node.baseParent}, Transform Parent: ${node.transformParent}<br>`;
+        html += `Scale: ${node.scale.toFixed(2)}, Radial: ${node.radialCount} @ ${node.radialRadius.toFixed(2)}, Rotation: ${node.rotation}°<br>`;
+    }
+    html += `Timestamp: ${timestamp}<br>`;
+    html += `Color: ${colorEnabled ? 'Enabled' : 'Disabled'}${colorEnabled ? ` (${colorPalette.baseColor})` : ''}<br>`;
+    html += `Canvas: ${CANVAS_SIZE}x${CANVAS_SIZE}<br><br>`;
+
+    html += '<strong>Pixel Statistics:</strong><br>';
     html += `Total Unique Pixel IDs: ${stats.totalUniqueIds.toLocaleString()}<br>`;
     html += `Even parity (colored): ${stats.evenCount.toLocaleString()} pixels<br>`;
     html += `Odd parity (white): ${stats.oddCount.toLocaleString()} pixels<br>`;
