@@ -682,4 +682,6 @@ refreshStatsButton.addEventListener('click', () => {
 });
 
 // Initialize on load
+// Set color palette from picker value (in case browser retained a different color after reload)
+colorPalette.setBaseColor(baseColorPicker.value);
 initializeNewGraph();
