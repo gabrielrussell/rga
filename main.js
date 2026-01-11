@@ -27,9 +27,8 @@ const rotationSlider = document.getElementById('rotation-slider');
 const rotationValue = document.getElementById('rotation-value');
 const deleteNodeButton = document.getElementById('delete-node-button');
 const thumbnailGrid = document.getElementById('thumbnail-grid');
-const fullsizeView = document.getElementById('fullsize-view');
+const fullsizePreview = document.getElementById('fullsize-preview');
 const fullsizeCanvas = document.getElementById('fullsize-canvas');
-const closeFullsize = document.getElementById('close-fullsize');
 
 // State
 let currentGraph = null;
@@ -97,6 +96,29 @@ function selectNode(nodeId) {
     updateNodeList();
     updateEditor();
     updateThumbnails(); // Highlight selected thumbnail
+    updateFullsizePreview();
+}
+
+// Update fullsize preview for selected node
+function updateFullsizePreview() {
+    if (selectedNodeId === null || !currentGraph) {
+        fullsizePreview.style.display = 'none';
+        return;
+    }
+
+    const node = currentGraph.getNode(selectedNodeId);
+    if (!node) return;
+
+    fullsizePreview.style.display = 'block';
+
+    const fullsizeRenderer = new Renderer(VIEWPORT, CANVAS_SIZE);
+    fullsizeRenderer.setGraph(currentGraph);
+
+    try {
+        fullsizeRenderer.renderNode(node, fullsizeCanvas);
+    } catch (error) {
+        showError(`Error rendering fullsize node ${node.id}: ${error.message}`);
+    }
 }
 
 // Update the editor panel with selected node's values
@@ -213,37 +235,8 @@ function updateThumbnails() {
 
         // Click to select node
         container.addEventListener('click', () => selectNode(node.id));
-
-        // Double-click for fullsize
-        container.addEventListener('dblclick', () => showFullsize(node));
     });
 }
-
-// Show fullsize view
-function showFullsize(node) {
-    fullsizeCanvas.width = CANVAS_SIZE;
-    fullsizeCanvas.height = CANVAS_SIZE;
-
-    const fullsizeRenderer = new Renderer(VIEWPORT, CANVAS_SIZE);
-    fullsizeRenderer.setGraph(currentGraph);
-    try {
-        fullsizeRenderer.renderNode(node, fullsizeCanvas);
-        fullsizeView.classList.add('visible');
-    } catch (error) {
-        showError(`Error rendering fullsize node ${node.id}: ${error.message}`);
-    }
-}
-
-// Close fullsize view
-closeFullsize.addEventListener('click', () => {
-    fullsizeView.classList.remove('visible');
-});
-
-fullsizeView.addEventListener('click', (e) => {
-    if (e.target === fullsizeView) {
-        fullsizeView.classList.remove('visible');
-    }
-});
 
 // Create new node
 createNodeButton.addEventListener('click', () => {
@@ -293,6 +286,7 @@ scaleSlider.addEventListener('input', (e) => {
     node.scale = parseFloat(e.target.value);
     scaleValue.textContent = node.scale.toFixed(2);
     updateThumbnails();
+    updateFullsizePreview();
 });
 
 radialRadiusSlider.addEventListener('input', (e) => {
@@ -301,6 +295,7 @@ radialRadiusSlider.addEventListener('input', (e) => {
     node.radialRadius = parseFloat(e.target.value);
     radialRadiusValue.textContent = node.radialRadius.toFixed(2);
     updateThumbnails();
+    updateFullsizePreview();
 });
 
 radialCountSlider.addEventListener('input', (e) => {
@@ -309,6 +304,7 @@ radialCountSlider.addEventListener('input', (e) => {
     node.radialCount = parseInt(e.target.value);
     radialCountValue.textContent = node.radialCount;
     updateThumbnails();
+    updateFullsizePreview();
 });
 
 rotationSlider.addEventListener('input', (e) => {
@@ -317,6 +313,7 @@ rotationSlider.addEventListener('input', (e) => {
     node.rotation = parseFloat(e.target.value);
     rotationValue.textContent = node.rotation + '°';
     updateThumbnails();
+    updateFullsizePreview();
 });
 
 // Parent selector event listeners
@@ -325,6 +322,7 @@ baseParentSelect.addEventListener('change', (e) => {
     const node = currentGraph.getNode(selectedNodeId);
     node.baseParent = parseInt(e.target.value);
     updateThumbnails();
+    updateFullsizePreview();
 });
 
 transformParentSelect.addEventListener('change', (e) => {
@@ -332,6 +330,7 @@ transformParentSelect.addEventListener('change', (e) => {
     const node = currentGraph.getNode(selectedNodeId);
     node.transformParent = parseInt(e.target.value);
     updateThumbnails();
+    updateFullsizePreview();
 });
 
 // Load example

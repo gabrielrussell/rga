@@ -196,44 +196,6 @@
             color: #666;
         }
 
-        #fullsize-view {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-        }
-
-        #fullsize-view.visible {
-            display: flex;
-        }
-
-        #fullsize-view canvas {
-            max-width: 90%;
-            max-height: 90%;
-            background-color: white;
-        }
-
-        #close-fullsize {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background-color: white;
-            color: #333;
-            font-size: 24px;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-        }
 
         .disabled {
             opacity: 0.5;
@@ -328,12 +290,14 @@
         <div id="right-panel">
             <h2>All Nodes</h2>
             <div id="thumbnail-grid"></div>
-        </div>
-    </div>
 
-    <div id="fullsize-view">
-        <div id="close-fullsize">&times;</div>
-        <canvas id="fullsize-canvas"></canvas>
+            <div id="fullsize-preview" style="display: none; margin-top: 30px;">
+                <h2>Selected Node Preview</h2>
+                <div style="display: flex; justify-content: center; background-color: white; padding: 20px; border-radius: 8px;">
+                    <canvas id="fullsize-canvas" width="800" height="800" style="max-width: 100%; height: auto; border: 1px solid #ddd;"></canvas>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script type="module" src="./main.js"></script>
