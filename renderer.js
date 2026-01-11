@@ -5,9 +5,11 @@ import { ColorPalette } from './color.js';
  * and color support. Uses ID matrix to track pixel inversion state.
  */
 export class Renderer {
-    constructor(viewport, canvasSize, colorPalette = null) {
+    constructor(viewport, canvasSize, colorPalette = null, supersampleFactor = 4) {
         this.viewport = viewport; // { minX, maxX, minY, maxY }
-        this.canvasSize = canvasSize; // pixel dimensions (square canvas)
+        this.targetSize = canvasSize; // final output size
+        this.supersampleFactor = supersampleFactor;
+        this.canvasSize = canvasSize * supersampleFactor; // internal rendering size
         this.layerCache = new Map(); // node id -> array of {canvas, idMatrix, depth}
         this.colorPalette = colorPalette || new ColorPalette('#3498db');
         this.useColor = colorPalette !== null;
@@ -58,8 +60,11 @@ export class Renderer {
      * Returns statistics for debugging
      */
     renderNode(node, targetCanvas) {
-        const ctx = targetCanvas.getContext('2d');
-        ctx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+        // Create internal high-res canvas
+        const internalCanvas = document.createElement('canvas');
+        internalCanvas.width = this.canvasSize;
+        internalCanvas.height = this.canvasSize;
+        const ctx = internalCanvas.getContext('2d');
 
         // Get layers for this node
         const layers = this.getNodeLayers(node);
@@ -82,8 +87,32 @@ export class Renderer {
             }
         }
 
-        // Apply final coloring based on parity and ID
-        this.applyFinalColors(targetCanvas, finalIdMatrix, finalDepthMatrix);
+        // Collect unique even IDs for per-image color mapping
+        const uniqueEvenIds = new Set();
+        for (let i = 0; i < finalIdMatrix.length; i++) {
+            const id = finalIdMatrix[i];
+            if (id !== 0xFFFFFFFF && id % 2 === 0) {
+                uniqueEvenIds.add(id);
+            }
+        }
+
+        // Create mapping from ID to sequential color index
+        const idToColorIndex = new Map();
+        const sortedIds = Array.from(uniqueEvenIds).sort((a, b) => a - b);
+        sortedIds.forEach((id, index) => {
+            idToColorIndex.set(id, index);
+        });
+
+        // Apply final coloring based on parity and per-image ID mapping
+        this.applyFinalColors(internalCanvas, finalIdMatrix, finalDepthMatrix, idToColorIndex);
+
+        // Downsample to target canvas with anti-aliasing
+        const targetCtx = targetCanvas.getContext('2d');
+        targetCtx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+        targetCtx.imageSmoothingEnabled = true;
+        targetCtx.imageSmoothingQuality = 'high';
+        targetCtx.drawImage(internalCanvas, 0, 0, this.canvasSize, this.canvasSize,
+                                           0, 0, this.targetSize, this.targetSize);
 
         // Store matrices for debugging
         this.lastIdMatrix = finalIdMatrix;
@@ -154,9 +183,9 @@ export class Renderer {
 
     /**
      * Apply final colors to canvas based on idMatrix
-     * Odd ID (parity 1) = alternate white/black, Even ID (parity 0) = color based on ID
+     * Odd ID (parity 1) = alternate white/black, Even ID (parity 0) = color from per-image mapping
      */
-    applyFinalColors(canvas, idMatrix, depthMatrix) {
+    applyFinalColors(canvas, idMatrix, depthMatrix, idToColorIndex) {
         const ctx = canvas.getContext('2d');
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
@@ -186,9 +215,8 @@ export class Renderer {
                     }
                     data[pixelIndex + 3] = 255;
                 } else {
-                    // Even parity - render with color based on ID
-                    // Divide by 2 to get unique index for each even ID
-                    const colorIndex = Math.floor(id / 2);
+                    // Even parity - render with color using per-image mapping
+                    const colorIndex = idToColorIndex.get(id);
                     const color = this.useColor
                         ? this.colorPalette.getColorForLayer(colorIndex)
                         : '#000000';
