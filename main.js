@@ -167,7 +167,8 @@ function updateFullsizePreview() {
     if (colorEnabled) {
         fullsizeRenderer.setColorPalette(colorPalette);
     }
-    // Reset pixel ID counter for consistent color assignment
+
+    // Reset pixel ID counter before rendering for consistent color assignment
     fullsizeRenderer.nextPixelId = 0;
 
     try {
@@ -322,8 +323,6 @@ function updateThumbnails() {
     if (colorEnabled) {
         renderer.setColorPalette(colorPalette);
     }
-    // Reset pixel ID counter for consistent color assignment
-    renderer.nextPixelId = 0;
 
     currentGraph.getAllNodes().forEach(node => {
         const container = document.createElement('div');
@@ -341,6 +340,9 @@ function updateThumbnails() {
         container.appendChild(canvas);
         container.appendChild(label);
         thumbnailGrid.appendChild(container);
+
+        // Reset pixel ID counter before each node for consistent color assignment
+        renderer.nextPixelId = 0;
 
         // Render node to thumbnail
         try {
