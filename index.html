@@ -14,9 +14,33 @@
             margin: 0;
             padding: 0;
             background-color: #f5f5f5;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        #error-display {
+            color: #d32f2f;
+            background-color: #ffebee;
+            padding: 10px 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 2000;
+            display: none;
+        }
+
+        #error-display.visible {
+            display: block;
+        }
+
+        #left-container {
+            width: 350px;
             display: flex;
             flex-direction: column;
-            height: 100vh;
+            background-color: white;
+            border-right: 1px solid #ddd;
         }
 
         header {
@@ -31,30 +55,8 @@
             font-size: 16px;
         }
 
-        #error-display {
-            color: #d32f2f;
-            background-color: #ffebee;
-            padding: 10px 20px;
-            margin: 0;
-            display: none;
-        }
-
-        #error-display.visible {
-            display: block;
-        }
-
-        #main-container {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
-
         #left-panel {
-            width: 350px;
-            background-color: white;
-            border-right: 1px solid #ddd;
-            display: flex;
-            flex-direction: column;
+            flex: 1;
             overflow-y: auto;
         }
 
@@ -64,11 +66,6 @@
             padding: 10px 20px;
         }
 
-        #right-panel h2 {
-            margin: 0 0 10px 0;
-            font-size: 14px;
-            color: #333;
-        }
 
         .panel-section {
             padding: 12px;
@@ -210,14 +207,12 @@
     </style>
 </head>
 <body>
-    <header>
-        <h1>Recursive Graph Art - Interactive Editor</h1>
-    </header>
-
     <div id="error-display"></div>
 
-    <div id="main-container">
-        <!-- Left Panel: Controls -->
+    <div id="left-container">
+        <header>
+            <h1>Recursive Graph Art - Interactive Editor</h1>
+        </header>
         <div id="left-panel">
             <!-- Node Selector -->
             <div class="panel-section">
@@ -293,17 +288,15 @@
                 </select>
             </div>
         </div>
+    </div>
 
-        <!-- Right Panel: Thumbnails -->
-        <div id="right-panel">
-            <h2>All Nodes</h2>
-            <div id="thumbnail-grid"></div>
+    <!-- Right Panel: Thumbnails -->
+    <div id="right-panel">
+        <div id="thumbnail-grid"></div>
 
-            <div id="fullsize-preview" style="display: none; margin-top: 30px;">
-                <h2>Selected Node Preview</h2>
-                <div style="display: flex; justify-content: center; background-color: white; padding: 20px; border-radius: 8px;">
-                    <canvas id="fullsize-canvas" width="800" height="800" style="max-width: 100%; height: auto; border: 1px solid #ddd;"></canvas>
-                </div>
+        <div id="fullsize-preview" style="display: none; margin-top: 20px;">
+            <div style="display: flex; justify-content: center; background-color: white; padding: 20px; border-radius: 8px;">
+                <canvas id="fullsize-canvas" width="800" height="800" style="max-width: 100%; height: auto; border: 1px solid #ddd;"></canvas>
             </div>
         </div>
     </div>
