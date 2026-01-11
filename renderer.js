@@ -82,7 +82,7 @@ export class Renderer {
             }
         }
 
-        // Apply final coloring based on parity and depth
+        // Apply final coloring based on parity and ID
         this.applyFinalColors(targetCanvas, finalIdMatrix, finalDepthMatrix);
 
         // Store matrices for debugging
@@ -153,8 +153,8 @@ export class Renderer {
     }
 
     /**
-     * Apply final colors to canvas based on idMatrix and depth
-     * Odd ID (parity 1) = white, Even ID (parity 0) = depth color
+     * Apply final colors to canvas based on idMatrix
+     * Odd ID (parity 1) = white, Even ID (parity 0) = color based on ID
      */
     applyFinalColors(canvas, idMatrix, depthMatrix) {
         const ctx = canvas.getContext('2d');
@@ -177,10 +177,11 @@ export class Renderer {
                     data[pixelIndex + 2] = 255;
                     data[pixelIndex + 3] = 255;
                 } else {
-                    // Even parity - render with depth color
-                    const depth = depthMatrix[i];
+                    // Even parity - render with color based on ID
+                    // Divide by 2 to get unique index for each even ID
+                    const colorIndex = Math.floor(id / 2);
                     const color = this.useColor
-                        ? this.colorPalette.getColorForLayer(depth)
+                        ? this.colorPalette.getColorForLayer(colorIndex)
                         : '#000000';
                     const rgb = this.hexToRgb(color);
 
