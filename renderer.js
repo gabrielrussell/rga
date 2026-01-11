@@ -6,6 +6,7 @@ export class Renderer {
     constructor(viewport, canvasSize) {
         this.viewport = viewport; // { minX, maxX, minY, maxY }
         this.canvasSize = canvasSize; // pixel dimensions (square canvas)
+        this.layerCache = new Map(); // node id -> array of layer canvases
     }
 
     /**
@@ -50,11 +51,18 @@ export class Renderer {
      * Returns an array of canvases, each representing a layer
      */
     getNodeLayers(node) {
-        if (node.isRoot()) {
-            return this.getRootLayers();
-        } else {
-            return this.getNonRootLayers(node);
+        // Check cache first
+        if (this.layerCache.has(node.id)) {
+            return this.layerCache.get(node.id);
         }
+
+        // Compute layers
+        const layers = node.isRoot() ? this.getRootLayers() : this.getNonRootLayers(node);
+
+        // Cache the result
+        this.layerCache.set(node.id, layers);
+
+        return layers;
     }
 
     /**
