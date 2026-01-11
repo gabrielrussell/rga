@@ -221,6 +221,23 @@
                 <button id="create-node-button">Create New Node</button>
             </div>
 
+            <!-- Color Settings -->
+            <div class="panel-section">
+                <h2>Color Settings</h2>
+
+                <div style="margin-bottom: 10px;">
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="color-enabled-checkbox" checked>
+                        <span>Enable Color Mode</span>
+                    </label>
+                </div>
+
+                <div style="margin-bottom: 10px;">
+                    <label>Base Color:</label>
+                    <input type="color" id="base-color-picker" value="#3498db" style="width: 100%; height: 32px; cursor: pointer;">
+                </div>
+            </div>
+
             <!-- Node Editor -->
             <div id="editor-section" class="panel-section">
                 <h2>Edit Node <span id="editor-node-id"></span></h2>

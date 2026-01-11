@@ -1,5 +1,6 @@
 import { Graph, Node } from './graph.js';
 import { Renderer } from './renderer.js';
+import { ColorPalette } from './color.js';
 
 // Configuration
 const VIEWPORT = { minX: -2, maxX: 2, minY: -2, maxY: 2 };
@@ -31,11 +32,15 @@ const deleteNodeButton = document.getElementById('delete-node-button');
 const thumbnailGrid = document.getElementById('thumbnail-grid');
 const fullsizePreview = document.getElementById('fullsize-preview');
 const fullsizeCanvas = document.getElementById('fullsize-canvas');
+const colorEnabledCheckbox = document.getElementById('color-enabled-checkbox');
+const baseColorPicker = document.getElementById('base-color-picker');
 
 // State
 let currentGraph = null;
 let selectedNodeId = null;
 let renderer = null;
+let colorPalette = new ColorPalette('#3498db');
+let colorEnabled = true;
 
 // Error handling
 function showError(message) {
@@ -113,7 +118,7 @@ function updateFullsizePreview() {
 
     fullsizePreview.style.display = 'block';
 
-    const fullsizeRenderer = new Renderer(VIEWPORT, CANVAS_SIZE);
+    const fullsizeRenderer = new Renderer(VIEWPORT, CANVAS_SIZE, colorEnabled ? colorPalette : null);
     fullsizeRenderer.setGraph(currentGraph);
 
     try {
@@ -208,7 +213,7 @@ function updateThumbnails() {
     thumbnailGrid.innerHTML = '';
     if (!currentGraph) return;
 
-    renderer = new Renderer(VIEWPORT, THUMBNAIL_SIZE);
+    renderer = new Renderer(VIEWPORT, THUMBNAIL_SIZE, colorEnabled ? colorPalette : null);
     renderer.setGraph(currentGraph);
 
     currentGraph.getAllNodes().forEach(node => {
@@ -415,6 +420,19 @@ exportJsonButton.addEventListener('click', () => {
     a.download = 'graph.json';
     a.click();
     URL.revokeObjectURL(url);
+});
+
+// Color controls event listeners
+colorEnabledCheckbox.addEventListener('change', (e) => {
+    colorEnabled = e.target.checked;
+    updateThumbnails();
+    updateFullsizePreview();
+});
+
+baseColorPicker.addEventListener('input', (e) => {
+    colorPalette.setBaseColor(e.target.value);
+    updateThumbnails();
+    updateFullsizePreview();
 });
 
 // Initialize on load

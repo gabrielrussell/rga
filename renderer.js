@@ -1,12 +1,33 @@
+import { ColorPalette } from './color.js';
+
 /**
  * Renderer for graph nodes using HTML5 Canvas with layer-based rendering
- * to preserve layer structure across radial repeats
+ * and color support
  */
 export class Renderer {
-    constructor(viewport, canvasSize) {
+    constructor(viewport, canvasSize, colorPalette = null) {
         this.viewport = viewport; // { minX, maxX, minY, maxY }
         this.canvasSize = canvasSize; // pixel dimensions (square canvas)
-        this.layerCache = new Map(); // node id -> array of layer canvases
+        this.layerCache = new Map(); // node id -> array of {canvas, depth}
+        this.colorPalette = colorPalette || new ColorPalette('#3498db');
+        this.useColor = colorPalette !== null;
+    }
+
+    /**
+     * Set the color palette
+     */
+    setColorPalette(colorPalette) {
+        this.colorPalette = colorPalette;
+        this.useColor = true;
+        this.layerCache.clear(); // Clear cache when colors change
+    }
+
+    /**
+     * Enable/disable color mode
+     */
+    setUseColor(useColor) {
+        this.useColor = useColor;
+        this.layerCache.clear();
     }
 
     /**
@@ -41,14 +62,14 @@ export class Renderer {
         const layers = this.getNodeLayers(node);
 
         // Draw all layers in order
-        for (const layer of layers) {
-            ctx.drawImage(layer, 0, 0);
+        for (const layerInfo of layers) {
+            ctx.drawImage(layerInfo.canvas, 0, 0);
         }
     }
 
     /**
      * Get rendering layers for a node
-     * Returns an array of canvases, each representing a layer
+     * Returns an array of {canvas, depth} objects
      */
     getNodeLayers(node) {
         // Check cache first
@@ -66,7 +87,8 @@ export class Renderer {
     }
 
     /**
-     * Get layers for root node (single layer: black circle)
+     * Get layers for root node
+     * Returns array with single layer at depth 0
      */
     getRootLayers() {
         const canvas = document.createElement('canvas');
@@ -77,17 +99,19 @@ export class Renderer {
         const center = this.mathToPixel(0, 0);
         const radius = this.mathToPixelDistance(1.0);
 
-        ctx.fillStyle = '#000000';
+        // Use color for depth 0 or black if not using colors
+        const fillColor = this.useColor ? this.colorPalette.getColorForLayer(0) : '#000000';
+        ctx.fillStyle = fillColor;
         ctx.beginPath();
         ctx.arc(center.x, center.y, radius, 0, 2 * Math.PI);
         ctx.fill();
 
-        return [canvas];
+        return [{ canvas, depth: 0 }];
     }
 
     /**
      * Get layers for non-root node
-     * Returns base layers + transformed/inverted transform layers
+     * Returns base layers + transformed/inverted transform layers with updated depths
      */
     getNonRootLayers(node) {
         const graph = this.getGraphFromNode(node);
@@ -100,16 +124,21 @@ export class Renderer {
         const transformParentNode = graph.getNode(node.transformParent);
         const transformLayers = this.getNodeLayers(transformParentNode);
 
-        // Apply transformations to each transform layer, invert, and collect
-        const transformedLayers = transformLayers.map(layer => {
+        // Find the maximum depth in transform layers to determine new depths
+        const maxTransformDepth = Math.max(...transformLayers.map(l => l.depth));
+
+        // Apply transformations to each transform layer, invert, and assign new depths
+        const transformedLayers = transformLayers.map(layerInfo => {
+            const newDepth = layerInfo.depth + 1; // Each inversion increases depth
             const transformed = this.applyTransformations(
-                layer,
+                layerInfo.canvas,
                 node.scale,
                 node.radialRadius,
                 node.radialCount,
                 node.rotation
             );
-            return this.invertColors(transformed);
+            const inverted = this.invertColors(transformed, newDepth);
+            return { canvas: inverted, depth: newDepth };
         });
 
         // Return base layers followed by transformed/inverted transform layers
@@ -138,7 +167,6 @@ export class Renderer {
         }
 
         // Radial repeat with count >= 1
-        // Now all copies of this layer are drawn before moving to the next layer
         const center = this.canvasSize / 2;
         const radiusPixels = this.mathToPixelDistance(radialRadius);
 
@@ -177,9 +205,11 @@ export class Renderer {
     }
 
     /**
-     * Invert colors (black <-> white) while preserving alpha
+     * Invert colors while preserving alpha
+     * In color mode: white stays white, colors are inverted to the color for the new depth
+     * In B&W mode: black ↔ white
      */
-    invertColors(sourceCanvas) {
+    invertColors(sourceCanvas, newDepth) {
         const resultCanvas = document.createElement('canvas');
         resultCanvas.width = sourceCanvas.width;
         resultCanvas.height = sourceCanvas.height;
@@ -188,20 +218,60 @@ export class Renderer {
         // Draw source to result
         ctx.drawImage(sourceCanvas, 0, 0);
 
-        // Get image data and invert colors
+        // Get image data
         const imageData = ctx.getImageData(0, 0, resultCanvas.width, resultCanvas.height);
         const data = imageData.data;
 
-        for (let i = 0; i < data.length; i += 4) {
-            // Invert RGB, preserve alpha
-            data[i] = 255 - data[i];         // R
-            data[i + 1] = 255 - data[i + 1]; // G
-            data[i + 2] = 255 - data[i + 2]; // B
-            // data[i + 3] is alpha, leave unchanged
+        if (this.useColor) {
+            // Color mode: replace non-white colors with the color for this depth
+            const newColor = this.colorPalette.getColorForLayer(newDepth);
+            const rgb = this.hexToRgb(newColor);
+
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                const a = data[i + 3];
+
+                // If alpha is > 0 and it's not white, replace with new color
+                if (a > 0) {
+                    // Check if it's white (all channels high)
+                    const isWhite = r > 250 && g > 250 && b > 250;
+
+                    if (!isWhite) {
+                        // Replace with new depth color, preserve alpha
+                        data[i] = rgb.r;
+                        data[i + 1] = rgb.g;
+                        data[i + 2] = rgb.b;
+                        // Alpha stays the same
+                    }
+                    // If white, leave it white
+                }
+            }
+        } else {
+            // B&W mode: simple inversion
+            for (let i = 0; i < data.length; i += 4) {
+                data[i] = 255 - data[i];         // R
+                data[i + 1] = 255 - data[i + 1]; // G
+                data[i + 2] = 255 - data[i + 2]; // B
+                // Alpha stays the same
+            }
         }
 
         ctx.putImageData(imageData, 0, 0);
         return resultCanvas;
+    }
+
+    /**
+     * Convert hex color to RGB
+     */
+    hexToRgb(hex) {
+        hex = hex.replace(/^#/, '');
+        return {
+            r: parseInt(hex.substring(0, 2), 16),
+            g: parseInt(hex.substring(2, 4), 16),
+            b: parseInt(hex.substring(4, 6), 16)
+        };
     }
 
     /**

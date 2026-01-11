@@ -17,7 +17,7 @@
       "transform_parent": 1,
       "scale": 0.5,
       "radial_radius": 0.5,
-      "radial_count": 5,
+      "radial_count": 6,
       "comment": "Pentagon of nested circles"
     },
     {
@@ -26,7 +26,7 @@
       "transform_parent": 1,
       "scale": 0.3,
       "radial_radius": 0.7,
-      "radial_count": 8,
+      "radial_count": 12,
       "comment": "Ring of 8 small nested circles"
     },
     {
@@ -109,7 +109,7 @@
       "transform_parent": 8,
       "scale": 0.6,
       "radial_radius": 0.4,
-      "radial_count": 4,
+      "radial_count": 6,
       "comment": "Quad pattern"
     },
     {
@@ -126,7 +126,7 @@
       "transform_parent": 7,
       "scale": 0.5,
       "radial_radius": 0.8,
-      "radial_count": 10,
+      "radial_count": 12,
       "comment": "Decagon of pentagons"
     },
     {
@@ -143,7 +143,7 @@
       "transform_parent": 2,
       "scale": 0.4,
       "radial_radius": 0.5,
-      "radial_count": 7,
+      "radial_count": 6,
       "comment": "Septagon variation"
     },
     {
@@ -160,7 +160,7 @@
       "transform_parent": 1,
       "scale": 0.3,
       "radial_radius": 1.0,
-      "radial_count": 16,
+      "radial_count": 18,
       "comment": "Wide ring of 16"
     },
     {
@@ -193,7 +193,7 @@
       "transform_parent": 11,
       "scale": 0.55,
       "radial_radius": 0.45,
-      "radial_count": 5,
+      "radial_count": 6,
       "comment": "Pentagon cluster"
     },
     {
@@ -210,7 +210,7 @@
       "transform_parent": 14,
       "scale": 0.5,
       "radial_radius": 0.7,
-      "radial_count": 8,
+      "radial_count": 9,
       "comment": "Octagon of complex elements"
     },
     {
@@ -227,7 +227,7 @@
       "transform_parent": 17,
       "scale": 0.35,
       "radial_radius": 1.1,
-      "radial_count": 20,
+      "radial_count": 24,
       "comment": "Outer corona"
     },
     {
