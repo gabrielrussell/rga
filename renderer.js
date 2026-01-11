@@ -1,4 +1,4 @@
-import { ColorPalette } from './color.js';
+import { ColorPalette, hexToHsl, hslToRgb, rgbToHex } from './color.js';
 
 /**
  * Renderer for graph nodes using HTML5 Canvas with layer-based rendering
@@ -14,6 +14,19 @@ export class Renderer {
         this.colorPalette = colorPalette || new ColorPalette('#3498db');
         this.useColor = colorPalette !== null;
         this.nextPixelId = 0; // Global counter for unique pixel IDs, increments by 2
+        this.colorModes = {
+            evenParity: 'regular',
+            oddParity: 'alternate',
+            firstIndex: 'inherit',
+            lastIndex: 'inherit'
+        };
+    }
+
+    /**
+     * Set color modes for different pixel categories
+     */
+    setColorModes(modes) {
+        this.colorModes = { ...modes };
     }
 
     /**
@@ -182,13 +195,16 @@ export class Renderer {
     }
 
     /**
-     * Apply final colors to canvas based on idMatrix
-     * Odd ID (parity 1) = alternate white/black, Even ID (parity 0) = color from per-image mapping
+     * Apply final colors to canvas based on idMatrix and color modes
+     * Respects color mode settings for even/odd parity and first/last indices
      */
     applyFinalColors(canvas, idMatrix, depthMatrix, idToColorIndex) {
         const ctx = canvas.getContext('2d');
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
+
+        // Find max color index for last index detection
+        const maxColorIndex = idToColorIndex.size > 0 ? Math.max(...idToColorIndex.values()) : -1;
 
         for (let i = 0; i < idMatrix.length; i++) {
             const id = idMatrix[i];
@@ -199,34 +215,33 @@ export class Renderer {
                 data[pixelIndex + 3] = 0;
             } else {
                 const parity = id % 2;
-                if (parity === 1) {
-                    // Odd parity - alternate between white and black based on ID
-                    const oddIndex = Math.floor(id / 2);
-                    const isWhite = oddIndex % 2 === 0;
 
-                    if (isWhite) {
-                        data[pixelIndex] = 255;
-                        data[pixelIndex + 1] = 255;
-                        data[pixelIndex + 2] = 255;
+                // Determine which color mode to use
+                let colorMode = null;
+                let colorIndex = null;
+
+                if (parity === 0) {
+                    // Even parity - check for first/last index overrides
+                    colorIndex = idToColorIndex.get(id);
+
+                    if (colorIndex === 0 && this.colorModes.firstIndex !== 'inherit') {
+                        colorMode = this.colorModes.firstIndex;
+                    } else if (colorIndex === maxColorIndex && this.colorModes.lastIndex !== 'inherit') {
+                        colorMode = this.colorModes.lastIndex;
                     } else {
-                        data[pixelIndex] = 0;
-                        data[pixelIndex + 1] = 0;
-                        data[pixelIndex + 2] = 0;
+                        colorMode = this.colorModes.evenParity;
                     }
-                    data[pixelIndex + 3] = 255;
                 } else {
-                    // Even parity - render with color using per-image mapping
-                    const colorIndex = idToColorIndex.get(id);
-                    const color = this.useColor
-                        ? this.colorPalette.getColorForLayer(colorIndex)
-                        : '#000000';
-                    const rgb = this.hexToRgb(color);
-
-                    data[pixelIndex] = rgb.r;
-                    data[pixelIndex + 1] = rgb.g;
-                    data[pixelIndex + 2] = rgb.b;
-                    data[pixelIndex + 3] = 255;
+                    // Odd parity
+                    colorMode = this.colorModes.oddParity;
                 }
+
+                // Apply the selected color mode
+                const rgb = this.getColorForMode(colorMode, id, parity, colorIndex);
+                data[pixelIndex] = rgb.r;
+                data[pixelIndex + 1] = rgb.g;
+                data[pixelIndex + 2] = rgb.b;
+                data[pixelIndex + 3] = 255;
             }
         }
 
@@ -504,6 +519,78 @@ export class Renderer {
             g: parseInt(hex.substring(2, 4), 16),
             b: parseInt(hex.substring(4, 6), 16)
         };
+    }
+
+    /**
+     * Create a desaturated version of a color
+     * @param {string} colorHex - Hex color string
+     * @param {number} desaturateAmount - Amount to desaturate (0.0-1.0, higher = more desaturated)
+     * @returns {string} Desaturated hex color
+     */
+    desaturateColor(colorHex, desaturateAmount = 0.7) {
+        const hsl = hexToHsl(colorHex);
+        const newS = Math.max(0, hsl.s * (1 - desaturateAmount));
+        const rgb = hslToRgb(hsl.h, newS, hsl.l);
+        return rgbToHex(rgb.r, rgb.g, rgb.b);
+    }
+
+    /**
+     * Get RGB color based on color mode
+     * @param {string} mode - Color mode (white/black/regular/alternative/alternate)
+     * @param {number} id - Pixel ID
+     * @param {number} parity - Pixel parity (0 or 1)
+     * @param {number|null} colorIndex - Color index for even parity pixels
+     * @returns {{r: number, g: number, b: number}} RGB color object
+     */
+    getColorForMode(mode, id, parity, colorIndex) {
+        switch (mode) {
+            case 'white':
+                return { r: 255, g: 255, b: 255 };
+
+            case 'black':
+                return { r: 0, g: 0, b: 0 };
+
+            case 'alternate':
+                // Alternate white/black based on ID
+                const oddIndex = Math.floor(id / 2);
+                const isWhite = oddIndex % 2 === 0;
+                return isWhite ? { r: 255, g: 255, b: 255 } : { r: 0, g: 0, b: 0 };
+
+            case 'regular':
+                // Regular color from palette
+                if (parity === 0 && colorIndex !== null) {
+                    const color = this.useColor
+                        ? this.colorPalette.getColorForLayer(colorIndex)
+                        : '#000000';
+                    return this.hexToRgb(color);
+                }
+                // For odd parity with regular mode, use color based on ID
+                const oddColorIndexReg = Math.floor(id / 2);
+                const colorReg = this.useColor
+                    ? this.colorPalette.getColorForLayer(oddColorIndexReg)
+                    : '#000000';
+                return this.hexToRgb(colorReg);
+
+            case 'alternative':
+                // Desaturated color from palette
+                if (parity === 0 && colorIndex !== null) {
+                    const color = this.useColor
+                        ? this.colorPalette.getColorForLayer(colorIndex)
+                        : '#000000';
+                    const desaturated = this.desaturateColor(color, 0.7);
+                    return this.hexToRgb(desaturated);
+                }
+                // For odd parity with alternative mode, use desaturated color based on ID
+                const oddColorIndexAlt = Math.floor(id / 2);
+                const colorAlt = this.useColor
+                    ? this.colorPalette.getColorForLayer(oddColorIndexAlt)
+                    : '#000000';
+                const desaturatedAlt = this.desaturateColor(colorAlt, 0.7);
+                return this.hexToRgb(desaturatedAlt);
+
+            default:
+                return { r: 0, g: 0, b: 0 };
+        }
     }
 
     /**

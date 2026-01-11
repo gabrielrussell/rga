@@ -35,6 +35,10 @@ const fullsizeCanvas = document.getElementById('fullsize-canvas');
 const pixelStats = document.getElementById('pixel-stats');
 const colorEnabledCheckbox = document.getElementById('color-enabled-checkbox');
 const baseColorPicker = document.getElementById('base-color-picker');
+const evenParityMode = document.getElementById('even-parity-mode');
+const oddParityMode = document.getElementById('odd-parity-mode');
+const firstIndexMode = document.getElementById('first-index-mode');
+const lastIndexMode = document.getElementById('last-index-mode');
 
 // State
 let currentGraph = null;
@@ -42,6 +46,12 @@ let selectedNodeId = null;
 let renderer = null;
 let colorPalette = new ColorPalette('#3498db');
 let colorEnabled = true;
+let colorModes = {
+    evenParity: 'regular',
+    oddParity: 'alternate',
+    firstIndex: 'inherit',
+    lastIndex: 'inherit'
+};
 
 // Error handling
 function showError(message) {
@@ -138,6 +148,7 @@ function updateFullsizePreview() {
 
     const fullsizeRenderer = new Renderer(VIEWPORT, CANVAS_SIZE, colorEnabled ? colorPalette : null);
     fullsizeRenderer.setGraph(currentGraph);
+    fullsizeRenderer.setColorModes(colorModes);
 
     try {
         const stats = fullsizeRenderer.renderNode(node, fullsizeCanvas);
@@ -283,6 +294,7 @@ function updateThumbnails() {
 
     renderer = new Renderer(VIEWPORT, THUMBNAIL_SIZE, colorEnabled ? colorPalette : null);
     renderer.setGraph(currentGraph);
+    renderer.setColorModes(colorModes);
 
     currentGraph.getAllNodes().forEach(node => {
         const container = document.createElement('div');
@@ -509,6 +521,30 @@ colorEnabledCheckbox.addEventListener('change', (e) => {
 
 baseColorPicker.addEventListener('input', (e) => {
     colorPalette.setBaseColor(e.target.value);
+    updateThumbnails();
+    updateFullsizePreview();
+});
+
+evenParityMode.addEventListener('change', (e) => {
+    colorModes.evenParity = e.target.value;
+    updateThumbnails();
+    updateFullsizePreview();
+});
+
+oddParityMode.addEventListener('change', (e) => {
+    colorModes.oddParity = e.target.value;
+    updateThumbnails();
+    updateFullsizePreview();
+});
+
+firstIndexMode.addEventListener('change', (e) => {
+    colorModes.firstIndex = e.target.value;
+    updateThumbnails();
+    updateFullsizePreview();
+});
+
+lastIndexMode.addEventListener('change', (e) => {
+    colorModes.lastIndex = e.target.value;
     updateThumbnails();
     updateFullsizePreview();
 });
