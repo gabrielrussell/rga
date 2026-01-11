@@ -431,25 +431,30 @@ export class Renderer {
         const radiusPixels = this.mathToPixelDistance(radialRadius);
 
         for (let i = 0; i < radialCount; i++) {
-            // Subtract 90 degrees so that 0 degrees points up instead of right
-            const angle = (i * 360) / radialCount - 90;
-            const angleRad = (angle * Math.PI) / 180;
+            // User angle: 0° = top, 90° = right, etc.
+            const userAngle = (i * 360) / radialCount;
+            // Placement angle: offset by -90° so 0° is at top instead of right
+            const placementAngle = userAngle - 90;
+            const placementRad = (placementAngle * Math.PI) / 180;
+            const userAngleRad = (userAngle * Math.PI) / 180;
 
             // Transform main canvas
             ctx.save();
             ctx.translate(center, center);
+            // Place at the target position
+            ctx.translate(radiusPixels * Math.cos(placementRad), radiusPixels * Math.sin(placementRad));
+            // Apply rotations (user rotation + wheel-style radial rotation)
             ctx.rotate((rotation * Math.PI) / 180);
             if (radialCount > 1) {
-                ctx.rotate(angleRad);
+                ctx.rotate(userAngleRad);
             }
-            ctx.translate(radiusPixels, 0);
             ctx.scale(scale, scale);
             ctx.translate(-center, -center);
             ctx.drawImage(sourceCanvas, 0, 0);
             ctx.restore();
 
             // Transform idMatrix for this repeat
-            this.transformIdMatrixDirect(sourceIdMatrix, resultIdMatrix, scale, rotation + angle, radiusPixels, 0);
+            this.transformIdMatrixDirect(sourceIdMatrix, resultIdMatrix, scale, rotation + userAngle, radiusPixels, placementAngle);
         }
 
         return { canvas: resultCanvas, idMatrix: resultIdMatrix };
@@ -460,11 +465,16 @@ export class Renderer {
      * For each destination pixel, compute inverse transform to find source pixel ID
      * Mirrors the canvas transformation order in reverse
      */
-    transformIdMatrixDirect(sourceIdMatrix, resultIdMatrix, scale, rotationDegrees, radiusPixels, unused) {
+    transformIdMatrixDirect(sourceIdMatrix, resultIdMatrix, scale, rotationDegrees, radiusPixels, placementAngleDegrees) {
         const center = this.canvasSize / 2;
         const rotationRad = (rotationDegrees * Math.PI) / 180;
+        const placementRad = (placementAngleDegrees * Math.PI) / 180;
         const cos = Math.cos(-rotationRad); // Inverse rotation
         const sin = Math.sin(-rotationRad);
+
+        // Placement offset in original coordinates
+        const placementX = radiusPixels * Math.cos(placementRad);
+        const placementY = radiusPixels * Math.sin(placementRad);
 
         // For each destination pixel
         for (let destY = 0; destY < this.canvasSize; destY++) {
@@ -480,17 +490,17 @@ export class Renderer {
                 let x = destX - center;
                 let y = destY - center;
 
+                // Undo the placement translation (reverse of ctx.translate(placementX, placementY))
+                x -= placementX;
+                y -= placementY;
+
                 // Apply inverse rotation (reverse of ctx.rotate)
                 const rotX = x * cos - y * sin;
                 const rotY = x * sin + y * cos;
 
-                // Reverse the radial translation (reverse of ctx.translate(radiusPixels, 0))
-                const transX = rotX - radiusPixels;
-                const transY = rotY;
-
                 // Apply inverse scale (reverse of ctx.scale)
-                const srcX = transX / scale;
-                const srcY = transY / scale;
+                const srcX = rotX / scale;
+                const srcY = rotY / scale;
 
                 // Translate back from center
                 const finalX = srcX + center;
