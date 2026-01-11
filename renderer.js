@@ -232,25 +232,33 @@ export class Renderer {
         resultCanvas.height = this.canvasSize;
         const ctx = resultCanvas.getContext('2d');
 
-        // Create result idMatrix (initialized to 255 = transparent)
-        const resultIdMatrix = new Uint8Array(this.canvasSize * this.canvasSize);
-        resultIdMatrix.fill(255);
+        // Create a canvas representation of idMatrix for transformation
+        const idCanvas = this.idMatrixToCanvas(sourceIdMatrix);
+        const idCanvasResult = document.createElement('canvas');
+        idCanvasResult.width = this.canvasSize;
+        idCanvasResult.height = this.canvasSize;
+        const idCtx = idCanvasResult.getContext('2d');
 
         // Handle radial_count = 0 (no transformation)
         if (radialCount === 0) {
             // Apply only scale and rotation
             const center = this.canvasSize / 2;
+
+            // Transform main canvas
             ctx.translate(center, center);
             ctx.scale(scale, scale);
             ctx.rotate((rotation * Math.PI) / 180);
             ctx.translate(-center, -center);
             ctx.drawImage(sourceCanvas, 0, 0);
 
-            // For idMatrix, we need to sample from source based on inverse transform
-            // For now, simplified: copy the idMatrix (works for simple cases)
-            // TODO: properly transform idMatrix with inverse sampling
-            this.transformIdMatrix(sourceIdMatrix, resultIdMatrix, scale, rotation, 0, 0, 0);
+            // Transform idMatrix canvas with same transformations
+            idCtx.translate(center, center);
+            idCtx.scale(scale, scale);
+            idCtx.rotate((rotation * Math.PI) / 180);
+            idCtx.translate(-center, -center);
+            idCtx.drawImage(idCanvas, 0, 0);
 
+            const resultIdMatrix = this.canvasToIdMatrix(idCanvasResult);
             return { canvas: resultCanvas, idMatrix: resultIdMatrix };
         }
 
@@ -263,52 +271,103 @@ export class Renderer {
             const angle = (i * 360) / radialCount - 90;
             const angleRad = (angle * Math.PI) / 180;
 
+            // Transform main canvas
             ctx.save();
-
-            // Move to center
             ctx.translate(center, center);
-
-            // Apply final rotation
             ctx.rotate((rotation * Math.PI) / 180);
-
-            // Rotate by angle (for this copy)
             if (radialCount > 1) {
                 ctx.rotate(angleRad);
             }
-
-            // Translate by radius
             ctx.translate(radiusPixels, 0);
-
-            // Apply scale
             ctx.scale(scale, scale);
-
-            // Draw the source canvas centered
             ctx.translate(-center, -center);
             ctx.drawImage(sourceCanvas, 0, 0);
-
             ctx.restore();
 
-            // Transform the idMatrix for this repeat
-            // Simplified: sample from transformed pixels
-            this.transformIdMatrix(sourceIdMatrix, resultIdMatrix, scale, rotation + angle, radiusPixels, 0, radialCount);
+            // Transform idMatrix canvas with same transformations
+            idCtx.save();
+            idCtx.translate(center, center);
+            idCtx.rotate((rotation * Math.PI) / 180);
+            if (radialCount > 1) {
+                idCtx.rotate(angleRad);
+            }
+            idCtx.translate(radiusPixels, 0);
+            idCtx.scale(scale, scale);
+            idCtx.translate(-center, -center);
+            idCtx.drawImage(idCanvas, 0, 0);
+            idCtx.restore();
         }
 
+        const resultIdMatrix = this.canvasToIdMatrix(idCanvasResult);
         return { canvas: resultCanvas, idMatrix: resultIdMatrix };
     }
 
     /**
-     * Transform idMatrix to match canvas transformation
-     * Simplified implementation: samples result canvas alpha to copy parity
+     * Convert idMatrix to canvas for transformation
+     * 0 = black (parity 0), 1 = white (parity 1), 255 = transparent
      */
-    transformIdMatrix(sourceIdMatrix, resultIdMatrix, scale, rotation, radiusPixels, angle, radialCount) {
-        // For simplicity, we'll read the result canvas alpha and copy parity from overlapping areas
-        // This is a simplified approach - proper implementation would inverse-transform each pixel
-        // For now, just copy the source idMatrix structure
-        for (let i = 0; i < sourceIdMatrix.length; i++) {
-            if (sourceIdMatrix[i] !== 255 && resultIdMatrix[i] === 255) {
-                resultIdMatrix[i] = sourceIdMatrix[i];
+    idMatrixToCanvas(idMatrix) {
+        const canvas = document.createElement('canvas');
+        canvas.width = this.canvasSize;
+        canvas.height = this.canvasSize;
+        const ctx = canvas.getContext('2d');
+        const imageData = ctx.createImageData(this.canvasSize, this.canvasSize);
+        const data = imageData.data;
+
+        for (let i = 0; i < idMatrix.length; i++) {
+            const pixelIndex = i * 4;
+            const parity = idMatrix[i];
+
+            if (parity === 255) {
+                // Transparent
+                data[pixelIndex] = 0;
+                data[pixelIndex + 1] = 0;
+                data[pixelIndex + 2] = 0;
+                data[pixelIndex + 3] = 0;
+            } else if (parity === 0) {
+                // Parity 0 = black
+                data[pixelIndex] = 0;
+                data[pixelIndex + 1] = 0;
+                data[pixelIndex + 2] = 0;
+                data[pixelIndex + 3] = 255;
+            } else {
+                // Parity 1 = white
+                data[pixelIndex] = 255;
+                data[pixelIndex + 1] = 255;
+                data[pixelIndex + 2] = 255;
+                data[pixelIndex + 3] = 255;
             }
         }
+
+        ctx.putImageData(imageData, 0, 0);
+        return canvas;
+    }
+
+    /**
+     * Convert canvas back to idMatrix
+     * Reads alpha and color to determine parity
+     */
+    canvasToIdMatrix(canvas) {
+        const ctx = canvas.getContext('2d');
+        const imageData = ctx.getImageData(0, 0, this.canvasSize, this.canvasSize);
+        const data = imageData.data;
+        const idMatrix = new Uint8Array(this.canvasSize * this.canvasSize);
+
+        for (let i = 0; i < idMatrix.length; i++) {
+            const pixelIndex = i * 4;
+            const alpha = data[pixelIndex + 3];
+
+            if (alpha === 0) {
+                // Transparent
+                idMatrix[i] = 255;
+            } else {
+                const r = data[pixelIndex];
+                // Black = parity 0, White = parity 1
+                idMatrix[i] = r > 127 ? 1 : 0;
+            }
+        }
+
+        return idMatrix;
     }
 
     /**
