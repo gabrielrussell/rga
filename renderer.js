@@ -16,7 +16,7 @@ export class Renderer {
         this.nextPixelId = 0; // Global counter for unique pixel IDs, increments by 2
         this.colorModes = {
             evenParity: 'regular',
-            oddParity: 'alternate',
+            oddParity: 'alternative',
             firstIndex: 'inherit',
             lastIndex: 'inherit'
         };

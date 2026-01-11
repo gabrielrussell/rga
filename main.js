@@ -54,7 +54,7 @@ let colorPalette = new ColorPalette('#3498db');
 let colorEnabled = true;
 let colorModes = {
     evenParity: 'regular',
-    oddParity: 'alternate',
+    oddParity: 'alternative',
     firstIndex: 'inherit',
     lastIndex: 'inherit'
 };
