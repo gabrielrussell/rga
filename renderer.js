@@ -223,29 +223,34 @@ export class Renderer {
         const data = imageData.data;
 
         if (this.useColor) {
-            // Color mode: replace non-white colors with the color for this depth
+            // Color mode: first invert, then apply depth color to non-white pixels
             const newColor = this.colorPalette.getColorForLayer(newDepth);
             const rgb = this.hexToRgb(newColor);
 
             for (let i = 0; i < data.length; i += 4) {
-                const r = data[i];
-                const g = data[i + 1];
-                const b = data[i + 2];
                 const a = data[i + 3];
 
-                // If alpha is > 0 and it's not white, replace with new color
                 if (a > 0) {
-                    // Check if it's white (all channels high)
-                    const isWhite = r > 250 && g > 250 && b > 250;
+                    // First, invert the RGB values
+                    const invR = 255 - data[i];
+                    const invG = 255 - data[i + 1];
+                    const invB = 255 - data[i + 2];
 
-                    if (!isWhite) {
-                        // Replace with new depth color, preserve alpha
+                    // Check if the inverted color is white
+                    const isWhite = invR > 250 && invG > 250 && invB > 250;
+
+                    if (isWhite) {
+                        // Keep it white
+                        data[i] = 255;
+                        data[i + 1] = 255;
+                        data[i + 2] = 255;
+                    } else {
+                        // Replace with depth color
                         data[i] = rgb.r;
                         data[i + 1] = rgb.g;
                         data[i + 2] = rgb.b;
-                        // Alpha stays the same
                     }
-                    // If white, leave it white
+                    // Alpha stays the same
                 }
             }
         } else {

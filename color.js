@@ -122,26 +122,61 @@ export function createDarkerSaturatedVariant(colorHex, darkenAmount = 15, satura
 }
 
 /**
- * Generate full color palette with base colors and variants
- * @param {string} baseColorHex - Base color in hex format
- * @param {number} variantLevels - Number of variant levels to generate (default 4)
- * @returns {string[]} Array of hex colors
+ * Create a desaturated variant of a color
  */
-export function generateColorPalette(baseColorHex, variantLevels = 4) {
+export function createDesaturatedVariant(colorHex, desaturateAmount = 20, lightnessChange = 0) {
+    const hsl = hexToHsl(colorHex);
+
+    const newS = Math.max(0, hsl.s - desaturateAmount);
+    const newL = Math.max(0, Math.min(100, hsl.l + lightnessChange));
+
+    const rgb = hslToRgb(hsl.h, newS, newL);
+    return rgbToHex(rgb.r, rgb.g, rgb.b);
+}
+
+/**
+ * Create a lighter variant of a color
+ */
+export function createLighterVariant(colorHex, lightenAmount = 15, saturateAmount = 0) {
+    const hsl = hexToHsl(colorHex);
+
+    const newL = Math.min(100, hsl.l + lightenAmount);
+    const newS = Math.max(0, Math.min(100, hsl.s + saturateAmount));
+
+    const rgb = hslToRgb(hsl.h, newS, newL);
+    return rgbToHex(rgb.r, rgb.g, rgb.b);
+}
+
+/**
+ * Generate full color palette with base colors and varied saturation/lightness
+ * @param {string} baseColorHex - Base color in hex format
+ * @returns {string[]} Array of hex colors with saturation variation
+ */
+export function generateColorPalette(baseColorHex) {
     // Generate base tetradic harmony
     const baseColors = generateTetradicHarmony(baseColorHex);
 
     const palette = [...baseColors];
 
-    // Generate darker/saturated variants
-    for (let level = 1; level <= variantLevels; level++) {
-        const darkenAmount = 15 * level;
-        const saturateAmount = 10 * level;
+    // For each base color, create variants with different saturation and lightness
+    for (const baseColor of baseColors) {
+        // Darker, highly saturated
+        palette.push(createDarkerSaturatedVariant(baseColor, 20, 20));
 
-        for (const baseColor of baseColors) {
-            const variant = createDarkerSaturatedVariant(baseColor, darkenAmount, saturateAmount);
-            palette.push(variant);
-        }
+        // Darker, moderately saturated
+        palette.push(createDarkerSaturatedVariant(baseColor, 25, 10));
+
+        // Very dark, highly saturated
+        palette.push(createDarkerSaturatedVariant(baseColor, 35, 25));
+
+        // Desaturated (muted)
+        palette.push(createDesaturatedVariant(baseColor, 30, 0));
+
+        // Desaturated and lighter (pastel-like)
+        palette.push(createDesaturatedVariant(baseColor, 35, 15));
+
+        // Lighter, saturated
+        palette.push(createLighterVariant(baseColor, 15, 10));
     }
 
     return palette;
