@@ -162,6 +162,8 @@ function updateFullsizePreview() {
     if (colorEnabled) {
         fullsizeRenderer.setColorPalette(colorPalette);
     }
+    // Reset pixel ID counter for consistent color assignment
+    fullsizeRenderer.nextPixelId = 0;
 
     try {
         const stats = fullsizeRenderer.renderNode(node, fullsizeCanvas);
@@ -315,6 +317,8 @@ function updateThumbnails() {
     if (colorEnabled) {
         renderer.setColorPalette(colorPalette);
     }
+    // Reset pixel ID counter for consistent color assignment
+    renderer.nextPixelId = 0;
 
     currentGraph.getAllNodes().forEach(node => {
         const container = document.createElement('div');
