@@ -10,6 +10,8 @@ const THUMBNAIL_SIZE = 200;
 const errorDisplay = document.getElementById('error-display');
 const exampleSelect = document.getElementById('example-select');
 const newGraphButton = document.getElementById('new-graph-button');
+const importJsonButton = document.getElementById('import-json-button');
+const importJsonInput = document.getElementById('import-json-input');
 const exportJsonButton = document.getElementById('export-json-button');
 const nodeSelect = document.getElementById('node-select');
 const createNodeButton = document.getElementById('create-node-button');
@@ -358,6 +360,32 @@ exampleSelect.addEventListener('change', async (e) => {
 // New graph button
 newGraphButton.addEventListener('click', () => {
     initializeNewGraph();
+});
+
+// Import JSON button - triggers file input
+importJsonButton.addEventListener('click', () => {
+    importJsonInput.click();
+});
+
+// Import JSON file handler
+importJsonInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    clearError();
+
+    try {
+        const text = await file.text();
+        const jsonData = JSON.parse(text);
+        currentGraph = Graph.fromJSON(jsonData);
+        selectedNodeId = null;
+        updateUI();
+        // Reset the file input so the same file can be loaded again if needed
+        importJsonInput.value = '';
+    } catch (error) {
+        showError(`Error importing JSON: ${error.message}`);
+        importJsonInput.value = '';
+    }
 });
 
 // Export to JSON
