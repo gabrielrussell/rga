@@ -8,6 +8,7 @@ const THUMBNAIL_SIZE = 200;
 
 // UI elements
 const errorDisplay = document.getElementById('error-display');
+const exampleSelect = document.getElementById('example-select');
 const jsonInput = document.getElementById('json-input');
 const renderButton = document.getElementById('render-button');
 const thumbnailGrid = document.getElementById('thumbnail-grid');
@@ -90,6 +91,27 @@ closeFullsize.addEventListener('click', () => {
 fullsizeView.addEventListener('click', (e) => {
     if (e.target === fullsizeView) {
         fullsizeView.classList.remove('visible');
+    }
+});
+
+// Load example from dropdown
+exampleSelect.addEventListener('change', async (e) => {
+    const examplePath = e.target.value;
+    if (!examplePath) {
+        return;
+    }
+
+    clearError();
+
+    try {
+        const response = await fetch(examplePath);
+        if (!response.ok) {
+            throw new Error(`Failed to load example: ${response.statusText}`);
+        }
+        const jsonData = await response.json();
+        jsonInput.value = JSON.stringify(jsonData, null, 2);
+    } catch (error) {
+        showError(`Error loading example: ${error.message}`);
     }
 });
 

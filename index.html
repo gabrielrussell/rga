@@ -41,6 +41,16 @@
             border-radius: 4px;
         }
 
+        select {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            background-color: white;
+        }
+
         button {
             background-color: #1976d2;
             color: white;
@@ -137,6 +147,16 @@
 
     <div id="input-section">
         <h2>Graph Definition (JSON)</h2>
+        <label for="example-select">Load Example:</label>
+        <select id="example-select">
+            <option value="">-- Select an example --</option>
+            <option value="examples/simple-root.json">Simple Root</option>
+            <option value="examples/scale-rotate.json">Scale & Rotate</option>
+            <option value="examples/radial-repeat.json">Radial Repeat</option>
+            <option value="examples/triplet-test.json">Triplet Test</option>
+            <option value="examples/complex-graph.json">Complex Graph</option>
+            <option value="examples/edge-cases.json">Edge Cases</option>
+        </select>
         <textarea id="json-input" placeholder='Enter JSON graph definition here...'></textarea>
         <button id="render-button">Render Graph</button>
     </div>
