@@ -11,7 +11,7 @@ export class Renderer {
         this.layerCache = new Map(); // node id -> array of {canvas, idMatrix, depth}
         this.colorPalette = colorPalette || new ColorPalette('#3498db');
         this.useColor = colorPalette !== null;
-        this.nextPixelId = 0; // Global counter for unique pixel IDs
+        this.nextPixelId = 0; // Global counter for unique pixel IDs, increments by 2
     }
 
     /**
@@ -64,17 +64,17 @@ export class Renderer {
         const layers = this.getNodeLayers(node);
 
         // Composite all layers together with their idMatrices
-        const finalIdMatrix = new Uint8Array(this.canvasSize * this.canvasSize);
-        finalIdMatrix.fill(255);
+        const finalIdMatrix = new Uint32Array(this.canvasSize * this.canvasSize);
+        finalIdMatrix.fill(0xFFFFFFFF);
         const finalDepthMatrix = new Uint8Array(this.canvasSize * this.canvasSize);
 
-        // Draw all layers in order, tracking final parity and depth for each pixel
+        // Draw all layers in order, tracking final ID and depth for each pixel
         for (const layerInfo of layers) {
             ctx.drawImage(layerInfo.canvas, 0, 0);
 
             // Update idMatrix and depthMatrix with this layer's data
             for (let i = 0; i < finalIdMatrix.length; i++) {
-                if (layerInfo.idMatrix[i] !== 255) {
+                if (layerInfo.idMatrix[i] !== 0xFFFFFFFF) {
                     finalIdMatrix[i] = layerInfo.idMatrix[i];
                     finalDepthMatrix[i] = layerInfo.depth;
                 }
@@ -87,7 +87,7 @@ export class Renderer {
 
     /**
      * Apply final colors to canvas based on idMatrix and depth
-     * Parity 1 = white, Parity 0 = depth color
+     * Odd ID (parity 1) = white, Even ID (parity 0) = depth color
      */
     applyFinalColors(canvas, idMatrix, depthMatrix) {
         const ctx = canvas.getContext('2d');
@@ -95,30 +95,33 @@ export class Renderer {
         const data = imageData.data;
 
         for (let i = 0; i < idMatrix.length; i++) {
-            const parity = idMatrix[i];
+            const id = idMatrix[i];
             const pixelIndex = i * 4;
 
-            if (parity === 255) {
+            if (id === 0xFFFFFFFF) {
                 // Transparent pixel - set alpha to 0
                 data[pixelIndex + 3] = 0;
-            } else if (parity === 1) {
-                // Odd parity - render as white
-                data[pixelIndex] = 255;
-                data[pixelIndex + 1] = 255;
-                data[pixelIndex + 2] = 255;
-                data[pixelIndex + 3] = 255;
             } else {
-                // Even parity - render with depth color
-                const depth = depthMatrix[i];
-                const color = this.useColor
-                    ? this.colorPalette.getColorForLayer(depth)
-                    : '#000000';
-                const rgb = this.hexToRgb(color);
+                const parity = id % 2;
+                if (parity === 1) {
+                    // Odd parity - render as white
+                    data[pixelIndex] = 255;
+                    data[pixelIndex + 1] = 255;
+                    data[pixelIndex + 2] = 255;
+                    data[pixelIndex + 3] = 255;
+                } else {
+                    // Even parity - render with depth color
+                    const depth = depthMatrix[i];
+                    const color = this.useColor
+                        ? this.colorPalette.getColorForLayer(depth)
+                        : '#000000';
+                    const rgb = this.hexToRgb(color);
 
-                data[pixelIndex] = rgb.r;
-                data[pixelIndex + 1] = rgb.g;
-                data[pixelIndex + 2] = rgb.b;
-                data[pixelIndex + 3] = 255;
+                    data[pixelIndex] = rgb.r;
+                    data[pixelIndex + 1] = rgb.g;
+                    data[pixelIndex + 2] = rgb.b;
+                    data[pixelIndex + 3] = 255;
+                }
             }
         }
 
@@ -147,7 +150,7 @@ export class Renderer {
     /**
      * Get layers for root node
      * Returns array with single layer at depth 0
-     * Creates ID matrix where all circle pixels have parity 0
+     * Assigns unique even IDs (parity 0) to all circle pixels
      */
     getRootLayers() {
         const canvas = document.createElement('canvas');
@@ -164,9 +167,9 @@ export class Renderer {
         ctx.arc(center.x, center.y, radius, 0, 2 * Math.PI);
         ctx.fill();
 
-        // Create ID matrix: store parity bit for each pixel
-        // 0 = even parity (render with color), 1 = odd parity (render white)
-        const idMatrix = new Uint8Array(this.canvasSize * this.canvasSize);
+        // Create ID matrix: store full IDs for each pixel
+        // IDs are even (parity 0) for root pixels
+        const idMatrix = new Uint32Array(this.canvasSize * this.canvasSize);
 
         // Get alpha channel to determine which pixels are part of the circle
         const imageData = ctx.getImageData(0, 0, this.canvasSize, this.canvasSize);
@@ -174,8 +177,14 @@ export class Renderer {
 
         for (let i = 0; i < idMatrix.length; i++) {
             const alpha = alphaData[i * 4 + 3];
-            // If pixel has alpha > 0, it's part of the circle with parity 0
-            idMatrix[i] = alpha > 0 ? 0 : 255; // 255 = transparent/no pixel
+            if (alpha > 0) {
+                // Assign unique even ID (parity 0)
+                idMatrix[i] = this.nextPixelId;
+                this.nextPixelId += 2;
+            } else {
+                // Transparent pixel
+                idMatrix[i] = 0xFFFFFFFF; // Use max uint32 as "no pixel" marker
+            }
         }
 
         return [{ canvas, idMatrix, depth: 0 }];
@@ -184,20 +193,24 @@ export class Renderer {
     /**
      * Get layers for non-root node
      * Returns base layers + transformed/inverted transform layers with updated depths
-     * Maintains ID matrices with proper parity tracking
+     * Assigns new IDs to all pixels, preserving or flipping parity
      */
     getNonRootLayers(node) {
         const graph = this.getGraphFromNode(node);
 
-        // Get base parent layers (preserve parity)
+        // Get base parent layers - reassign new IDs with same parity
         const baseParentNode = graph.getNode(node.baseParent);
-        const baseLayers = this.getNodeLayers(baseParentNode);
+        const baseParentLayers = this.getNodeLayers(baseParentNode);
+        const baseLayers = baseParentLayers.map(layerInfo => {
+            const newIdMatrix = this.reassignIds(layerInfo.idMatrix, false); // preserve parity
+            return { canvas: layerInfo.canvas, idMatrix: newIdMatrix, depth: layerInfo.depth };
+        });
 
-        // Get transform parent layers (will flip parity)
+        // Get transform parent layers - reassign new IDs with flipped parity
         const transformParentNode = graph.getNode(node.transformParent);
         const transformLayers = this.getNodeLayers(transformParentNode);
 
-        // Apply transformations to each transform layer and flip parity
+        // Apply transformations to each transform layer and reassign IDs with flipped parity
         const transformedLayers = transformLayers.map(layerInfo => {
             const newDepth = layerInfo.depth + 1;
 
@@ -212,14 +225,41 @@ export class Renderer {
                     node.rotation
                 );
 
-            // Flip parity for transform parent pixels
-            const flippedIdMatrix = this.flipParity(transformedIdMatrix);
+            // Reassign new IDs with flipped parity for transform parent pixels
+            const newIdMatrix = this.reassignIds(transformedIdMatrix, true); // flip parity
 
-            return { canvas: transformedCanvas, idMatrix: flippedIdMatrix, depth: newDepth };
+            return { canvas: transformedCanvas, idMatrix: newIdMatrix, depth: newDepth };
         });
 
         // Return base layers followed by transformed transform layers
         return [...baseLayers, ...transformedLayers];
+    }
+
+    /**
+     * Reassign new IDs to all pixels, optionally flipping parity
+     * @param {Uint32Array} sourceIdMatrix - Original ID matrix
+     * @param {boolean} flipParity - Whether to flip parity (even↔odd)
+     * @returns {Uint32Array} New ID matrix with reassigned IDs
+     */
+    reassignIds(sourceIdMatrix, flipParity) {
+        const newIdMatrix = new Uint32Array(sourceIdMatrix.length);
+
+        for (let i = 0; i < sourceIdMatrix.length; i++) {
+            if (sourceIdMatrix[i] === 0xFFFFFFFF) {
+                // Transparent pixel - keep as transparent
+                newIdMatrix[i] = 0xFFFFFFFF;
+            } else {
+                // Get original parity
+                const originalParity = sourceIdMatrix[i] % 2;
+                // Determine new parity
+                const newParity = flipParity ? 1 - originalParity : originalParity;
+                // Assign new ID with appropriate parity
+                newIdMatrix[i] = this.nextPixelId + newParity;
+                this.nextPixelId += 2;
+            }
+        }
+
+        return newIdMatrix;
     }
 
     /**
@@ -232,7 +272,7 @@ export class Renderer {
         resultCanvas.height = this.canvasSize;
         const ctx = resultCanvas.getContext('2d');
 
-        // Create a canvas representation of idMatrix for transformation
+        // Create a canvas representation of idMatrix for transformation (render by parity)
         const idCanvas = this.idMatrixToCanvas(sourceIdMatrix);
         const idCanvasResult = document.createElement('canvas');
         idCanvasResult.width = this.canvasSize;
@@ -304,7 +344,7 @@ export class Renderer {
 
     /**
      * Convert idMatrix to canvas for transformation
-     * 0 = black (parity 0), 1 = white (parity 1), 255 = transparent
+     * Renders based on parity: even ID = black, odd ID = white
      */
     idMatrixToCanvas(idMatrix) {
         const canvas = document.createElement('canvas');
@@ -316,26 +356,29 @@ export class Renderer {
 
         for (let i = 0; i < idMatrix.length; i++) {
             const pixelIndex = i * 4;
-            const parity = idMatrix[i];
+            const id = idMatrix[i];
 
-            if (parity === 255) {
+            if (id === 0xFFFFFFFF) {
                 // Transparent
                 data[pixelIndex] = 0;
                 data[pixelIndex + 1] = 0;
                 data[pixelIndex + 2] = 0;
                 data[pixelIndex + 3] = 0;
-            } else if (parity === 0) {
-                // Parity 0 = black
-                data[pixelIndex] = 0;
-                data[pixelIndex + 1] = 0;
-                data[pixelIndex + 2] = 0;
-                data[pixelIndex + 3] = 255;
             } else {
-                // Parity 1 = white
-                data[pixelIndex] = 255;
-                data[pixelIndex + 1] = 255;
-                data[pixelIndex + 2] = 255;
-                data[pixelIndex + 3] = 255;
+                const parity = id % 2;
+                if (parity === 0) {
+                    // Even ID (parity 0) = black
+                    data[pixelIndex] = 0;
+                    data[pixelIndex + 1] = 0;
+                    data[pixelIndex + 2] = 0;
+                    data[pixelIndex + 3] = 255;
+                } else {
+                    // Odd ID (parity 1) = white
+                    data[pixelIndex] = 255;
+                    data[pixelIndex + 1] = 255;
+                    data[pixelIndex + 2] = 255;
+                    data[pixelIndex + 3] = 255;
+                }
             }
         }
 
@@ -345,13 +388,13 @@ export class Renderer {
 
     /**
      * Convert canvas back to idMatrix
-     * Reads alpha and color to determine parity
+     * Creates new IDs based on pixel color, preserving parity from visual
      */
     canvasToIdMatrix(canvas) {
         const ctx = canvas.getContext('2d');
         const imageData = ctx.getImageData(0, 0, this.canvasSize, this.canvasSize);
         const data = imageData.data;
-        const idMatrix = new Uint8Array(this.canvasSize * this.canvasSize);
+        const idMatrix = new Uint32Array(this.canvasSize * this.canvasSize);
 
         for (let i = 0; i < idMatrix.length; i++) {
             const pixelIndex = i * 4;
@@ -359,32 +402,20 @@ export class Renderer {
 
             if (alpha === 0) {
                 // Transparent
-                idMatrix[i] = 255;
+                idMatrix[i] = 0xFFFFFFFF;
             } else {
                 const r = data[pixelIndex];
-                // Black = parity 0, White = parity 1
-                idMatrix[i] = r > 127 ? 1 : 0;
+                // Black = parity 0 (even), White = parity 1 (odd)
+                const parity = r > 127 ? 1 : 0;
+                // Assign new ID with the determined parity
+                idMatrix[i] = this.nextPixelId + parity;
+                this.nextPixelId += 2;
             }
         }
 
         return idMatrix;
     }
 
-    /**
-     * Flip parity bits in idMatrix
-     * 0 -> 1, 1 -> 0, 255 (transparent) stays 255
-     */
-    flipParity(sourceIdMatrix) {
-        const flipped = new Uint8Array(sourceIdMatrix.length);
-        for (let i = 0; i < sourceIdMatrix.length; i++) {
-            if (sourceIdMatrix[i] === 255) {
-                flipped[i] = 255; // Keep transparent
-            } else {
-                flipped[i] = sourceIdMatrix[i] === 0 ? 1 : 0; // Flip parity
-            }
-        }
-        return flipped;
-    }
 
     /**
      * Convert hex color to RGB
