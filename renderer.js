@@ -404,16 +404,54 @@ export class Renderer {
     /**
      * Transform idMatrix directly by sampling source IDs at transformed positions
      * For each destination pixel, compute inverse transform to find source pixel ID
+     * Mirrors the canvas transformation order in reverse
      */
-    transformIdMatrixDirect(sourceIdMatrix, resultIdMatrix, scale, rotation, offsetX, offsetY) {
-        // For simplicity: just copy the source idMatrix structure
-        // A proper implementation would inverse-transform each destination pixel
-        // to find its source pixel and copy that ID
+    transformIdMatrixDirect(sourceIdMatrix, resultIdMatrix, scale, rotationDegrees, radiusPixels, unused) {
+        const center = this.canvasSize / 2;
+        const rotationRad = (rotationDegrees * Math.PI) / 180;
+        const cos = Math.cos(-rotationRad); // Inverse rotation
+        const sin = Math.sin(-rotationRad);
 
-        // Temporary simple implementation: copy IDs where they overlap
-        for (let i = 0; i < sourceIdMatrix.length; i++) {
-            if (sourceIdMatrix[i] !== 0xFFFFFFFF && resultIdMatrix[i] === 0xFFFFFFFF) {
-                resultIdMatrix[i] = sourceIdMatrix[i];
+        // For each destination pixel
+        for (let destY = 0; destY < this.canvasSize; destY++) {
+            for (let destX = 0; destX < this.canvasSize; destX++) {
+                const destIndex = destY * this.canvasSize + destX;
+
+                // Skip if already has an ID (from earlier radial repeat)
+                if (resultIdMatrix[destIndex] !== 0xFFFFFFFF) {
+                    continue;
+                }
+
+                // Start with destination pixel, translate to center
+                let x = destX - center;
+                let y = destY - center;
+
+                // Apply inverse rotation (reverse of ctx.rotate)
+                const rotX = x * cos - y * sin;
+                const rotY = x * sin + y * cos;
+
+                // Reverse the radial translation (reverse of ctx.translate(radiusPixels, 0))
+                const transX = rotX - radiusPixels;
+                const transY = rotY;
+
+                // Apply inverse scale (reverse of ctx.scale)
+                const srcX = transX / scale;
+                const srcY = transY / scale;
+
+                // Translate back from center
+                const finalX = srcX + center;
+                const finalY = srcY + center;
+
+                // Check bounds and sample from source
+                if (finalX >= 0 && finalX < this.canvasSize && finalY >= 0 && finalY < this.canvasSize) {
+                    const srcIndex = Math.round(finalY) * this.canvasSize + Math.round(finalX);
+                    if (srcIndex >= 0 && srcIndex < sourceIdMatrix.length) {
+                        const sourceId = sourceIdMatrix[srcIndex];
+                        if (sourceId !== 0xFFFFFFFF) {
+                            resultIdMatrix[destIndex] = sourceId;
+                        }
+                    }
+                }
             }
         }
     }
