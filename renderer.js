@@ -31,19 +31,19 @@ export class Renderer {
 
     /**
      * Set the color palette
+     * Note: Does not clear cache since colors are applied after layer computation
      */
     setColorPalette(colorPalette) {
         this.colorPalette = colorPalette;
         this.useColor = true;
-        this.layerCache.clear(); // Clear cache when colors change
     }
 
     /**
      * Enable/disable color mode
+     * Note: Does not clear cache since colors are applied after layer computation
      */
     setUseColor(useColor) {
         this.useColor = useColor;
-        this.layerCache.clear();
     }
 
     /**

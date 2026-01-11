@@ -48,7 +48,8 @@ const totalMemorySpan = document.getElementById('total-memory');
 // State
 let currentGraph = null;
 let selectedNodeId = null;
-let renderer = null;
+let renderer = null; // Thumbnail renderer
+let fullsizeRenderer = null; // Fullsize renderer (separate cache)
 let colorPalette = new ColorPalette('#3498db');
 let colorEnabled = true;
 let colorModes = {
@@ -151,9 +152,16 @@ function updateFullsizePreview() {
 
     fullsizePreview.style.display = 'block';
 
-    const fullsizeRenderer = new Renderer(VIEWPORT, CANVAS_SIZE, colorEnabled ? colorPalette : null);
+    // Create fullsize renderer only if it doesn't exist
+    if (!fullsizeRenderer) {
+        fullsizeRenderer = new Renderer(VIEWPORT, CANVAS_SIZE, colorEnabled ? colorPalette : null, 2);
+    }
     fullsizeRenderer.setGraph(currentGraph);
     fullsizeRenderer.setColorModes(colorModes);
+    fullsizeRenderer.setUseColor(colorEnabled);
+    if (colorEnabled) {
+        fullsizeRenderer.setColorPalette(colorPalette);
+    }
 
     try {
         const stats = fullsizeRenderer.renderNode(node, fullsizeCanvas);
@@ -176,7 +184,7 @@ function displayPixelStats(stats) {
     }
     html += `Timestamp: ${timestamp}<br>`;
     html += `Color: ${colorEnabled ? 'Enabled' : 'Disabled'}${colorEnabled ? ` (${colorPalette.baseColor})` : ''}<br>`;
-    html += `Canvas: ${CANVAS_SIZE}x${CANVAS_SIZE} (4x supersampled)<br><br>`;
+    html += `Canvas: ${CANVAS_SIZE}x${CANVAS_SIZE} (2x supersampled)<br><br>`;
 
     html += '<strong>Pixel Statistics:</strong><br>';
     html += `Total Unique Pixel IDs: ${stats.totalUniqueIds.toLocaleString()}<br>`;
@@ -297,9 +305,16 @@ function updateThumbnails() {
     thumbnailGrid.innerHTML = '';
     if (!currentGraph) return;
 
-    renderer = new Renderer(VIEWPORT, THUMBNAIL_SIZE, colorEnabled ? colorPalette : null);
+    // Create renderer only if it doesn't exist or needs recreation
+    if (!renderer) {
+        renderer = new Renderer(VIEWPORT, THUMBNAIL_SIZE, colorEnabled ? colorPalette : null, 2);
+    }
     renderer.setGraph(currentGraph);
     renderer.setColorModes(colorModes);
+    renderer.setUseColor(colorEnabled);
+    if (colorEnabled) {
+        renderer.setColorPalette(colorPalette);
+    }
 
     currentGraph.getAllNodes().forEach(node => {
         const container = document.createElement('div');
@@ -559,17 +574,23 @@ lastIndexMode.addEventListener('change', (e) => {
 
 // Memory diagnostics
 function updateMemoryStats() {
-    // Both fullsize and thumbnail rendering use the same 'renderer' variable
-    // (thumbnails create a new renderer each time updateThumbnails is called)
-    let stats = { totalMB: '0.00', nodeCount: 0, totalLayers: 0 };
+    let thumbnailStats = { totalMB: '0.00', nodeCount: 0, totalLayers: 0 };
+    let fullsizeStats = { totalMB: '0.00', nodeCount: 0, totalLayers: 0 };
+
     if (renderer) {
-        stats = renderer.getCacheStats();
+        thumbnailStats = renderer.getCacheStats();
     }
 
-    const totalMB = parseFloat(stats.totalMB);
+    if (fullsizeRenderer) {
+        fullsizeStats = fullsizeRenderer.getCacheStats();
+    }
 
-    fullsizeMemorySpan.textContent = `${stats.totalMB} MB`;
-    thumbnailMemorySpan.textContent = `${stats.nodeCount || 0} nodes, ${stats.totalLayers || 0} layers`;
+    const thumbnailMB = parseFloat(thumbnailStats.totalMB);
+    const fullsizeMB = parseFloat(fullsizeStats.totalMB);
+    const totalMB = thumbnailMB + fullsizeMB;
+
+    fullsizeMemorySpan.textContent = `${fullsizeStats.totalMB} MB (${fullsizeStats.nodeCount} nodes, ${fullsizeStats.totalLayers} layers)`;
+    thumbnailMemorySpan.textContent = `${thumbnailStats.totalMB} MB (${thumbnailStats.nodeCount} nodes, ${thumbnailStats.totalLayers} layers)`;
     totalMemorySpan.textContent = `${totalMB.toFixed(2)} MB`;
 
     // Add warning if memory is high
@@ -589,9 +610,12 @@ clearCacheButton.addEventListener('click', () => {
     if (renderer) {
         renderer.clearCache();
     }
+    if (fullsizeRenderer) {
+        fullsizeRenderer.clearCache();
+    }
 
     updateMemoryStats();
-    showError('Cache cleared');
+    showError('Caches cleared');
     setTimeout(() => hideError(), 2000);
 });
 
