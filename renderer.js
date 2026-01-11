@@ -388,7 +388,8 @@ export class Renderer {
 
     /**
      * Convert canvas back to idMatrix
-     * Creates new IDs based on pixel color, preserving parity from visual
+     * Creates placeholder IDs that encode parity: 0 (even/black) or 1 (odd/white)
+     * Real unique IDs will be assigned later by reassignIds
      */
     canvasToIdMatrix(canvas) {
         const ctx = canvas.getContext('2d');
@@ -406,10 +407,8 @@ export class Renderer {
             } else {
                 const r = data[pixelIndex];
                 // Black = parity 0 (even), White = parity 1 (odd)
-                const parity = r > 127 ? 1 : 0;
-                // Assign new ID with the determined parity
-                idMatrix[i] = this.nextPixelId + parity;
-                this.nextPixelId += 2;
+                // Store placeholder ID that encodes just the parity
+                idMatrix[i] = r > 127 ? 1 : 0;
             }
         }
 
