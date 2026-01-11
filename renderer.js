@@ -566,8 +566,9 @@ export class Renderer {
                         : '#000000';
                     return this.hexToRgb(color);
                 }
-                // For odd parity with regular mode, offset by 1 to avoid overlap with even parity colors
-                const oddColorIndexReg = Math.floor(id / 2) + 1;
+                // For odd parity with regular mode, use large offset to avoid overlap with even parity
+                // Palette has 28 colors (4 base + 24 variants), so offset by 100 to be safe
+                const oddColorIndexReg = Math.floor(id / 2) + 100;
                 const colorReg = this.useColor
                     ? this.colorPalette.getColorForLayer(oddColorIndexReg)
                     : '#000000';
@@ -582,8 +583,8 @@ export class Renderer {
                     const desaturated = this.desaturateColor(color);
                     return this.hexToRgb(desaturated);
                 }
-                // For odd parity with alternative mode, offset by 1 to avoid overlap with even parity colors
-                const oddColorIndexAlt = Math.floor(id / 2) + 1;
+                // For odd parity with alternative mode, use large offset to avoid overlap with even parity
+                const oddColorIndexAlt = Math.floor(id / 2) + 100;
                 const colorAlt = this.useColor
                     ? this.colorPalette.getColorForLayer(oddColorIndexAlt)
                     : '#000000';
