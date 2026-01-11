@@ -150,16 +150,34 @@ function updateFullsizePreview() {
 // Display pixel statistics
 function displayPixelStats(stats) {
     let html = '<strong>Pixel Statistics:</strong><br><br>';
-    html += `Unique Pixel IDs: ${stats.uniqueIds.toLocaleString()}<br>`;
+    html += `Total Unique Pixel IDs: ${stats.totalUniqueIds.toLocaleString()}<br>`;
     html += `Even parity (colored): ${stats.evenCount.toLocaleString()} pixels<br>`;
     html += `Odd parity (white): ${stats.oddCount.toLocaleString()} pixels<br>`;
     html += `Transparent: ${stats.transparentCount.toLocaleString()} pixels<br><br>`;
 
-    html += '<strong>By Depth:</strong><br>';
-    for (const depthInfo of stats.depthCounts) {
-        const total = depthInfo.even + depthInfo.odd;
-        html += `Depth ${depthInfo.depth}: ${total.toLocaleString()} pixels `;
-        html += `(${depthInfo.even.toLocaleString()} colored, ${depthInfo.odd.toLocaleString()} white)<br>`;
+    html += '<strong>IDs by Depth and Parity:</strong><br>';
+    for (const depthInfo of stats.depthInfo) {
+        html += `<br><strong>Depth ${depthInfo.depth}:</strong><br>`;
+
+        if (depthInfo.even.length > 0) {
+            html += `&nbsp;&nbsp;Even IDs (${depthInfo.even.length} unique): `;
+            const evenSample = depthInfo.even.slice(0, 20);
+            html += evenSample.join(', ');
+            if (depthInfo.even.length > 20) {
+                html += `, ... (${depthInfo.even.length - 20} more)`;
+            }
+            html += '<br>';
+        }
+
+        if (depthInfo.odd.length > 0) {
+            html += `&nbsp;&nbsp;Odd IDs (${depthInfo.odd.length} unique): `;
+            const oddSample = depthInfo.odd.slice(0, 20);
+            html += oddSample.join(', ');
+            if (depthInfo.odd.length > 20) {
+                html += `, ... (${depthInfo.odd.length - 20} more)`;
+            }
+            html += '<br>';
+        }
     }
 
     pixelStats.innerHTML = html;

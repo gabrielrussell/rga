@@ -98,7 +98,7 @@ export class Renderer {
      */
     computePixelStats(idMatrix, depthMatrix) {
         const uniqueIds = new Set();
-        const depthCounts = new Map(); // depth -> {even: count, odd: count}
+        const idsByDepthParity = new Map(); // key: "depth_parity" -> Set of IDs
         let evenCount = 0;
         let oddCount = 0;
         let transparentCount = 0;
@@ -112,28 +112,43 @@ export class Renderer {
                 const parity = id % 2;
                 const depth = depthMatrix[i];
 
-                if (!depthCounts.has(depth)) {
-                    depthCounts.set(depth, { even: 0, odd: 0 });
+                const key = `${depth}_${parity}`;
+                if (!idsByDepthParity.has(key)) {
+                    idsByDepthParity.set(key, new Set());
                 }
+                idsByDepthParity.get(key).add(id);
 
                 if (parity === 0) {
                     evenCount++;
-                    depthCounts.get(depth).even++;
                 } else {
                     oddCount++;
-                    depthCounts.get(depth).odd++;
                 }
             }
         }
 
+        // Organize by depth with IDs
+        const depthInfo = new Map();
+        for (const [key, ids] of idsByDepthParity.entries()) {
+            const [depth, parity] = key.split('_').map(Number);
+            if (!depthInfo.has(depth)) {
+                depthInfo.set(depth, { even: [], odd: [] });
+            }
+            const sortedIds = Array.from(ids).sort((a, b) => a - b);
+            if (parity === 0) {
+                depthInfo.get(depth).even = sortedIds;
+            } else {
+                depthInfo.get(depth).odd = sortedIds;
+            }
+        }
+
         return {
-            uniqueIds: uniqueIds.size,
+            totalUniqueIds: uniqueIds.size,
             evenCount,
             oddCount,
             transparentCount,
-            depthCounts: Array.from(depthCounts.entries())
+            depthInfo: Array.from(depthInfo.entries())
                 .sort((a, b) => a[0] - b[0])
-                .map(([depth, counts]) => ({ depth, ...counts }))
+                .map(([depth, ids]) => ({ depth, ...ids }))
         };
     }
 
