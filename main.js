@@ -6,7 +6,6 @@ import { ColorPalette } from './color.js';
 const VIEWPORT = { minX: -2, maxX: 2, minY: -2, maxY: 2 };
 const CANVAS_SIZE = 800;
 const THUMBNAIL_SIZE = 200;
-const VERSION = 'a3d2445'; // Update with: git rev-parse --short HEAD
 
 // UI elements
 const errorDisplay = document.getElementById('error-display');
@@ -154,7 +153,6 @@ function displayPixelStats(stats) {
     const timestamp = new Date().toISOString();
 
     let html = '<strong>Render Metadata:</strong><br>';
-    html += `Version: ${VERSION}<br>`;
     html += `Node: ${node.id}${node.isRoot() ? ' (Root)' : ''}<br>`;
     if (!node.isRoot()) {
         html += `Base Parent: ${node.baseParent}, Transform Parent: ${node.transformParent}<br>`;
