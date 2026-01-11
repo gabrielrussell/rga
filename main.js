@@ -160,7 +160,7 @@ function displayPixelStats(stats) {
     }
     html += `Timestamp: ${timestamp}<br>`;
     html += `Color: ${colorEnabled ? 'Enabled' : 'Disabled'}${colorEnabled ? ` (${colorPalette.baseColor})` : ''}<br>`;
-    html += `Canvas: ${CANVAS_SIZE}x${CANVAS_SIZE}<br><br>`;
+    html += `Canvas: ${CANVAS_SIZE}x${CANVAS_SIZE} (4x supersampled)<br><br>`;
 
     html += '<strong>Pixel Statistics:</strong><br>';
     html += `Total Unique Pixel IDs: ${stats.totalUniqueIds.toLocaleString()}<br>`;
