@@ -1,7 +1,7 @@
-import { Graph } from './graph.js';
+import { Graph, Node } from './graph.js';
 import { Renderer } from './renderer.js';
 
-// Initial viewport and canvas configuration
+// Configuration
 const VIEWPORT = { minX: -2, maxX: 2, minY: -2, maxY: 2 };
 const CANVAS_SIZE = 800;
 const THUMBNAIL_SIZE = 200;
@@ -9,38 +9,182 @@ const THUMBNAIL_SIZE = 200;
 // UI elements
 const errorDisplay = document.getElementById('error-display');
 const exampleSelect = document.getElementById('example-select');
-const jsonInput = document.getElementById('json-input');
-const renderButton = document.getElementById('render-button');
+const newGraphButton = document.getElementById('new-graph-button');
+const exportJsonButton = document.getElementById('export-json-button');
+const nodeList = document.getElementById('node-list');
+const createNodeButton = document.getElementById('create-node-button');
+const editorSection = document.getElementById('editor-section');
+const editorNodeId = document.getElementById('editor-node-id');
+const baseParentSelect = document.getElementById('base-parent-select');
+const transformParentSelect = document.getElementById('transform-parent-select');
+const scaleSlider = document.getElementById('scale-slider');
+const scaleValue = document.getElementById('scale-value');
+const radialRadiusSlider = document.getElementById('radial-radius-slider');
+const radialRadiusValue = document.getElementById('radial-radius-value');
+const radialCountSlider = document.getElementById('radial-count-slider');
+const radialCountValue = document.getElementById('radial-count-value');
+const rotationSlider = document.getElementById('rotation-slider');
+const rotationValue = document.getElementById('rotation-value');
+const deleteNodeButton = document.getElementById('delete-node-button');
 const thumbnailGrid = document.getElementById('thumbnail-grid');
 const fullsizeView = document.getElementById('fullsize-view');
 const fullsizeCanvas = document.getElementById('fullsize-canvas');
 const closeFullsize = document.getElementById('close-fullsize');
 
+// State
 let currentGraph = null;
+let selectedNodeId = null;
 let renderer = null;
 
-// Display error message
+// Error handling
 function showError(message) {
     errorDisplay.textContent = message;
     errorDisplay.classList.add('visible');
     console.error(message);
 }
 
-// Clear error message
 function clearError() {
     errorDisplay.textContent = '';
     errorDisplay.classList.remove('visible');
 }
 
-// Render all nodes as thumbnails
-function renderThumbnails(graph) {
-    thumbnailGrid.innerHTML = '';
-    renderer = new Renderer(VIEWPORT, THUMBNAIL_SIZE);
-    renderer.setGraph(graph);
+// Initialize with simple root node
+function initializeNewGraph() {
+    currentGraph = new Graph();
+    const rootNode = new Node(0);
+    currentGraph.addNode(rootNode);
+    currentGraph.rootNode = rootNode;
+    selectedNodeId = null;
+    updateUI();
+}
 
-    graph.getAllNodes().forEach(node => {
+// Update all UI elements
+function updateUI() {
+    updateNodeList();
+    updateThumbnails();
+    updateEditor();
+}
+
+// Update node list in left panel
+function updateNodeList() {
+    nodeList.innerHTML = '';
+    if (!currentGraph) return;
+
+    currentGraph.getAllNodes().forEach(node => {
+        const item = document.createElement('div');
+        item.className = 'node-item';
+        if (node.isRoot()) item.classList.add('root');
+        if (selectedNodeId === node.id) item.classList.add('selected');
+
+        const label = document.createElement('span');
+        label.textContent = node.isRoot() ? `Node ${node.id} (Root)` : `Node ${node.id}`;
+        item.appendChild(label);
+
+        item.addEventListener('click', () => selectNode(node.id));
+        nodeList.appendChild(item);
+    });
+}
+
+// Select a node for editing
+function selectNode(nodeId) {
+    selectedNodeId = nodeId;
+    updateNodeList();
+    updateEditor();
+    updateThumbnails(); // Highlight selected thumbnail
+}
+
+// Update the editor panel with selected node's values
+function updateEditor() {
+    if (selectedNodeId === null || !currentGraph) {
+        editorSection.classList.remove('visible');
+        return;
+    }
+
+    const node = currentGraph.getNode(selectedNodeId);
+    if (!node) return;
+
+    editorSection.classList.add('visible');
+    editorNodeId.textContent = node.id;
+
+    // Disable editing for root node (can't have parents or transforms)
+    const isRoot = node.isRoot();
+    baseParentSelect.disabled = isRoot;
+    transformParentSelect.disabled = isRoot;
+    scaleSlider.disabled = isRoot;
+    radialRadiusSlider.disabled = isRoot;
+    radialCountSlider.disabled = isRoot;
+    rotationSlider.disabled = isRoot;
+    deleteNodeButton.disabled = isRoot;
+
+    if (isRoot) {
+        baseParentSelect.innerHTML = '<option>N/A (Root)</option>';
+        transformParentSelect.innerHTML = '<option>N/A (Root)</option>';
+        scaleSlider.value = 1;
+        scaleValue.textContent = '1.0';
+        radialRadiusSlider.value = 0;
+        radialRadiusValue.textContent = '0.0';
+        radialCountSlider.value = 0;
+        radialCountValue.textContent = '0';
+        rotationSlider.value = 0;
+        rotationValue.textContent = '0°';
+        return;
+    }
+
+    // Populate parent selectors
+    updateParentSelectors(node);
+
+    // Set slider values
+    scaleSlider.value = node.scale;
+    scaleValue.textContent = node.scale.toFixed(2);
+    radialRadiusSlider.value = node.radialRadius;
+    radialRadiusValue.textContent = node.radialRadius.toFixed(2);
+    radialCountSlider.value = node.radialCount;
+    radialCountValue.textContent = node.radialCount;
+    rotationSlider.value = node.rotation;
+    rotationValue.textContent = node.rotation + '°';
+}
+
+// Update parent selector dropdowns
+function updateParentSelectors(currentNode) {
+    const nodes = currentGraph.getAllNodes();
+
+    // Base parent selector
+    baseParentSelect.innerHTML = '';
+    nodes.forEach(node => {
+        if (node.id !== currentNode.id) { // Can't be parent of self
+            const option = document.createElement('option');
+            option.value = node.id;
+            option.textContent = node.isRoot() ? `Node ${node.id} (Root)` : `Node ${node.id}`;
+            if (node.id === currentNode.baseParent) option.selected = true;
+            baseParentSelect.appendChild(option);
+        }
+    });
+
+    // Transform parent selector
+    transformParentSelect.innerHTML = '';
+    nodes.forEach(node => {
+        if (node.id !== currentNode.id) { // Can't be parent of self
+            const option = document.createElement('option');
+            option.value = node.id;
+            option.textContent = node.isRoot() ? `Node ${node.id} (Root)` : `Node ${node.id}`;
+            if (node.id === currentNode.transformParent) option.selected = true;
+            transformParentSelect.appendChild(option);
+        }
+    });
+}
+
+// Render all thumbnails
+function updateThumbnails() {
+    thumbnailGrid.innerHTML = '';
+    if (!currentGraph) return;
+
+    renderer = new Renderer(VIEWPORT, THUMBNAIL_SIZE);
+    renderer.setGraph(currentGraph);
+
+    currentGraph.getAllNodes().forEach(node => {
         const container = document.createElement('div');
         container.className = 'thumbnail-container';
+        if (selectedNodeId === node.id) container.classList.add('selected');
 
         const canvas = document.createElement('canvas');
         canvas.width = THUMBNAIL_SIZE;
@@ -48,7 +192,7 @@ function renderThumbnails(graph) {
 
         const label = document.createElement('div');
         label.className = 'node-label';
-        label.textContent = `Node ${node.id}`;
+        label.textContent = node.isRoot() ? `Node ${node.id} (Root)` : `Node ${node.id}`;
 
         container.appendChild(canvas);
         container.appendChild(label);
@@ -61,14 +205,15 @@ function renderThumbnails(graph) {
             showError(`Error rendering node ${node.id}: ${error.message}`);
         }
 
-        // Click handler for fullsize view
-        container.addEventListener('click', () => {
-            showFullsize(node);
-        });
+        // Click to select node
+        container.addEventListener('click', () => selectNode(node.id));
+
+        // Double-click for fullsize
+        container.addEventListener('dblclick', () => showFullsize(node));
     });
 }
 
-// Show fullsize view of a node
+// Show fullsize view
 function showFullsize(node) {
     fullsizeCanvas.width = CANVAS_SIZE;
     fullsizeCanvas.height = CANVAS_SIZE;
@@ -94,12 +239,99 @@ fullsizeView.addEventListener('click', (e) => {
     }
 });
 
-// Load example from dropdown
-exampleSelect.addEventListener('change', async (e) => {
-    const examplePath = e.target.value;
-    if (!examplePath) {
+// Create new node
+createNodeButton.addEventListener('click', () => {
+    if (!currentGraph) return;
+
+    const nodes = currentGraph.getAllNodes();
+    const newId = Math.max(...nodes.map(n => n.id)) + 1;
+
+    // Default: use root as both parents
+    const rootId = currentGraph.rootNode.id;
+    const newNode = new Node(newId, rootId, rootId, 1.0, 0, 0, 0);
+
+    currentGraph.addNode(newNode);
+    selectNode(newId);
+    updateUI();
+});
+
+// Delete node
+deleteNodeButton.addEventListener('click', () => {
+    if (selectedNodeId === null || !currentGraph) return;
+
+    const node = currentGraph.getNode(selectedNodeId);
+    if (node.isRoot()) {
+        showError('Cannot delete root node');
         return;
     }
+
+    // Check if any other nodes depend on this one
+    const dependents = currentGraph.getAllNodes().filter(n =>
+        n.baseParent === selectedNodeId || n.transformParent === selectedNodeId
+    );
+
+    if (dependents.length > 0) {
+        showError(`Cannot delete node ${selectedNodeId}: used by ${dependents.length} other node(s)`);
+        return;
+    }
+
+    currentGraph.nodes.delete(selectedNodeId);
+    selectedNodeId = null;
+    updateUI();
+});
+
+// Slider event listeners
+scaleSlider.addEventListener('input', (e) => {
+    if (selectedNodeId === null) return;
+    const node = currentGraph.getNode(selectedNodeId);
+    node.scale = parseFloat(e.target.value);
+    scaleValue.textContent = node.scale.toFixed(2);
+    updateThumbnails();
+});
+
+radialRadiusSlider.addEventListener('input', (e) => {
+    if (selectedNodeId === null) return;
+    const node = currentGraph.getNode(selectedNodeId);
+    node.radialRadius = parseFloat(e.target.value);
+    radialRadiusValue.textContent = node.radialRadius.toFixed(2);
+    updateThumbnails();
+});
+
+radialCountSlider.addEventListener('input', (e) => {
+    if (selectedNodeId === null) return;
+    const node = currentGraph.getNode(selectedNodeId);
+    node.radialCount = parseInt(e.target.value);
+    radialCountValue.textContent = node.radialCount;
+    updateThumbnails();
+});
+
+rotationSlider.addEventListener('input', (e) => {
+    if (selectedNodeId === null) return;
+    const node = currentGraph.getNode(selectedNodeId);
+    node.rotation = parseFloat(e.target.value);
+    rotationValue.textContent = node.rotation + '°';
+    updateThumbnails();
+});
+
+// Parent selector event listeners
+baseParentSelect.addEventListener('change', (e) => {
+    if (selectedNodeId === null) return;
+    const node = currentGraph.getNode(selectedNodeId);
+    node.baseParent = parseInt(e.target.value);
+    updateThumbnails();
+});
+
+transformParentSelect.addEventListener('change', (e) => {
+    if (selectedNodeId === null) return;
+    const node = currentGraph.getNode(selectedNodeId);
+    node.transformParent = parseInt(e.target.value);
+    updateThumbnails();
+});
+
+// Load example
+exampleSelect.addEventListener('change', async (e) => {
+    const examplePath = e.target.value;
+    if (!examplePath) return;
 
     clearError();
 
@@ -109,37 +341,48 @@ exampleSelect.addEventListener('change', async (e) => {
             throw new Error(`Failed to load example: ${response.statusText}`);
         }
         const jsonData = await response.json();
-        jsonInput.value = JSON.stringify(jsonData, null, 2);
+        currentGraph = Graph.fromJSON(jsonData);
+        selectedNodeId = null;
+        updateUI();
+        exampleSelect.value = ''; // Reset selector
     } catch (error) {
         showError(`Error loading example: ${error.message}`);
     }
 });
 
-// Handle render button click
-renderButton.addEventListener('click', () => {
-    clearError();
-    thumbnailGrid.innerHTML = '';
-
-    try {
-        const jsonText = jsonInput.value.trim();
-        if (!jsonText) {
-            showError('Please enter a JSON graph definition');
-            return;
-        }
-
-        const jsonData = JSON.parse(jsonText);
-        currentGraph = Graph.fromJSON(jsonData);
-        renderThumbnails(currentGraph);
-    } catch (error) {
-        showError(error.message);
-    }
+// New graph button
+newGraphButton.addEventListener('click', () => {
+    initializeNewGraph();
 });
 
-// Load example graph on startup
-const exampleGraph = {
-    nodes: [
-        { id: 0 }
-    ]
-};
+// Export to JSON
+exportJsonButton.addEventListener('click', () => {
+    if (!currentGraph) return;
 
-jsonInput.value = JSON.stringify(exampleGraph, null, 2);
+    const nodes = currentGraph.getAllNodes().map(node => {
+        const obj = { id: node.id };
+        if (!node.isRoot()) {
+            obj.base_parent = node.baseParent;
+            obj.transform_parent = node.transformParent;
+            obj.scale = node.scale;
+            obj.radial_radius = node.radialRadius;
+            obj.radial_count = node.radialCount;
+            obj.rotation = node.rotation;
+        }
+        return obj;
+    });
+
+    const json = JSON.stringify({ nodes }, null, 2);
+
+    // Download as file
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'graph.json';
+    a.click();
+    URL.revokeObjectURL(url);
+});
+
+// Initialize on load
+initializeNewGraph();
