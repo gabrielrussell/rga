@@ -522,15 +522,17 @@ export class Renderer {
     }
 
     /**
-     * Create a desaturated version of a color
+     * Create a whiter, less saturated version of a color
      * @param {string} colorHex - Hex color string
-     * @param {number} desaturateAmount - Amount to desaturate (0.0-1.0, higher = more desaturated)
-     * @returns {string} Desaturated hex color
+     * @param {number} desaturateAmount - Amount to desaturate (0.0-1.0)
+     * @param {number} lightenAmount - Amount to increase lightness (0-100)
+     * @returns {string} Desaturated and lightened hex color
      */
-    desaturateColor(colorHex, desaturateAmount = 0.7) {
+    desaturateColor(colorHex, desaturateAmount = 0.6, lightenAmount = 20) {
         const hsl = hexToHsl(colorHex);
         const newS = Math.max(0, hsl.s * (1 - desaturateAmount));
-        const rgb = hslToRgb(hsl.h, newS, hsl.l);
+        const newL = Math.min(100, hsl.l + lightenAmount);
+        const rgb = hslToRgb(hsl.h, newS, newL);
         return rgbToHex(rgb.r, rgb.g, rgb.b);
     }
 
@@ -608,5 +610,43 @@ export class Renderer {
      */
     setGraph(graph) {
         this.graph = graph;
+    }
+
+    /**
+     * Get cache statistics for memory diagnostics
+     */
+    getCacheStats() {
+        let totalLayers = 0;
+        let totalMatrixBytes = 0;
+        let totalCanvasBytes = 0;
+        const matrixBytesPerPixel = 4 + 1; // Uint32Array + Uint8Array
+        const canvasBytesPerPixel = 4; // RGBA
+
+        for (const [nodeId, layers] of this.layerCache.entries()) {
+            totalLayers += layers.length;
+            for (const layer of layers) {
+                const pixelCount = layer.idMatrix.length;
+                totalMatrixBytes += pixelCount * matrixBytesPerPixel;
+                totalCanvasBytes += pixelCount * canvasBytesPerPixel;
+            }
+        }
+
+        return {
+            nodeCount: this.layerCache.size,
+            totalLayers,
+            totalMatrixMB: (totalMatrixBytes / 1024 / 1024).toFixed(2),
+            totalCanvasMB: (totalCanvasBytes / 1024 / 1024).toFixed(2),
+            totalMB: ((totalMatrixBytes + totalCanvasBytes) / 1024 / 1024).toFixed(2),
+            canvasSize: this.canvasSize,
+            targetSize: this.targetSize,
+            supersampleFactor: this.supersampleFactor
+        };
+    }
+
+    /**
+     * Clear the layer cache to free memory
+     */
+    clearCache() {
+        this.layerCache.clear();
     }
 }

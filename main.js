@@ -39,6 +39,11 @@ const evenParityMode = document.getElementById('even-parity-mode');
 const oddParityMode = document.getElementById('odd-parity-mode');
 const firstIndexMode = document.getElementById('first-index-mode');
 const lastIndexMode = document.getElementById('last-index-mode');
+const clearCacheButton = document.getElementById('clear-cache-button');
+const refreshStatsButton = document.getElementById('refresh-stats-button');
+const fullsizeMemorySpan = document.getElementById('fullsize-memory');
+const thumbnailMemorySpan = document.getElementById('thumbnail-memory');
+const totalMemorySpan = document.getElementById('total-memory');
 
 // State
 let currentGraph = null;
@@ -323,6 +328,9 @@ function updateThumbnails() {
         // Click to select node
         container.addEventListener('click', () => selectNode(node.id));
     });
+
+    // Update memory stats after rendering
+    updateMemoryStats();
 }
 
 // Create new node
@@ -547,6 +555,48 @@ lastIndexMode.addEventListener('change', (e) => {
     colorModes.lastIndex = e.target.value;
     updateThumbnails();
     updateFullsizePreview();
+});
+
+// Memory diagnostics
+function updateMemoryStats() {
+    // Both fullsize and thumbnail rendering use the same 'renderer' variable
+    // (thumbnails create a new renderer each time updateThumbnails is called)
+    let stats = { totalMB: '0.00', nodeCount: 0, totalLayers: 0 };
+    if (renderer) {
+        stats = renderer.getCacheStats();
+    }
+
+    const totalMB = parseFloat(stats.totalMB);
+
+    fullsizeMemorySpan.textContent = `${stats.totalMB} MB`;
+    thumbnailMemorySpan.textContent = `${stats.nodeCount || 0} nodes, ${stats.totalLayers || 0} layers`;
+    totalMemorySpan.textContent = `${totalMB.toFixed(2)} MB`;
+
+    // Add warning if memory is high
+    if (totalMB > 500) {
+        totalMemorySpan.style.color = '#d32f2f';
+        totalMemorySpan.style.fontWeight = 'bold';
+    } else if (totalMB > 200) {
+        totalMemorySpan.style.color = '#ff9800';
+        totalMemorySpan.style.fontWeight = 'bold';
+    } else {
+        totalMemorySpan.style.color = '#666';
+        totalMemorySpan.style.fontWeight = 'normal';
+    }
+}
+
+clearCacheButton.addEventListener('click', () => {
+    if (renderer) {
+        renderer.clearCache();
+    }
+
+    updateMemoryStats();
+    showError('Cache cleared');
+    setTimeout(() => hideError(), 2000);
+});
+
+refreshStatsButton.addEventListener('click', () => {
+    updateMemoryStats();
 });
 
 // Initialize on load
