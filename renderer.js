@@ -433,17 +433,17 @@ export class Renderer {
         for (let i = 0; i < radialCount; i++) {
             // User angle: 0° = top, 90° = right, etc.
             const userAngle = (i * 360) / radialCount;
-            // Placement angle: offset by -90° so 0° is at top instead of right
-            const placementAngle = userAngle - 90;
+            // Placement angle: includes rotation offset + -90° so 0° is at top
+            const placementAngle = userAngle + rotation - 90;
             const placementRad = (placementAngle * Math.PI) / 180;
             const userAngleRad = (userAngle * Math.PI) / 180;
 
             // Transform main canvas
             ctx.save();
             ctx.translate(center, center);
-            // Place at the target position
+            // Place at the target position (includes rotation offset)
             ctx.translate(radiusPixels * Math.cos(placementRad), radiusPixels * Math.sin(placementRad));
-            // Apply rotations (user rotation + wheel-style radial rotation)
+            // Apply wheel-style radial rotation + pattern rotation
             ctx.rotate((rotation * Math.PI) / 180);
             if (radialCount > 1) {
                 ctx.rotate(userAngleRad);
