@@ -65,29 +65,34 @@
         }
 
         .panel-section {
-            padding: 20px;
+            padding: 12px;
             border-bottom: 1px solid #eee;
         }
 
         .panel-section h2 {
-            margin: 0 0 15px 0;
-            font-size: 18px;
+            margin: 0 0 10px 0;
+            font-size: 14px;
             color: #333;
         }
 
         .panel-section h3 {
-            margin: 0 0 10px 0;
-            font-size: 16px;
+            margin: 0 0 8px 0;
+            font-size: 13px;
             color: #555;
+        }
+
+        .panel-section label {
+            font-size: 12px;
+            color: #666;
         }
 
         select {
             width: 100%;
-            padding: 8px;
-            font-size: 14px;
+            padding: 6px;
+            font-size: 12px;
             border: 1px solid #ccc;
             border-radius: 4px;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             background-color: white;
         }
 
@@ -95,12 +100,12 @@
             background-color: #1976d2;
             color: white;
             border: none;
-            padding: 10px 15px;
-            font-size: 14px;
+            padding: 8px 12px;
+            font-size: 12px;
             border-radius: 4px;
             cursor: pointer;
             width: 100%;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
         button:hover {
@@ -124,14 +129,14 @@
         }
 
         .slider-control {
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
 
         .slider-control label {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 5px;
-            font-size: 13px;
+            margin-bottom: 3px;
+            font-size: 11px;
             color: #666;
         }
 
@@ -142,36 +147,7 @@
         .slider-control .value-display {
             font-weight: bold;
             color: #1976d2;
-        }
-
-        #node-list {
-            max-height: 200px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-
-        .node-item {
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .node-item:hover {
-            background-color: #f5f5f5;
-        }
-
-        .node-item.selected {
-            background-color: #e3f2fd;
-            border-left: 3px solid #1976d2;
-        }
-
-        .node-item.root {
-            font-weight: bold;
-            color: #1976d2;
+            font-size: 11px;
         }
 
         #editor-section {
@@ -275,27 +251,10 @@
     <div id="main-container">
         <!-- Left Panel: Controls -->
         <div id="left-panel">
-            <!-- Example Loader -->
+            <!-- Node Selector -->
             <div class="panel-section">
-                <h2>Load Example</h2>
-                <select id="example-select">
-                    <option value="">-- Select an example --</option>
-                    <option value="examples/simple-root.json">Simple Root</option>
-                    <option value="examples/scale-rotate.json">Scale & Rotate</option>
-                    <option value="examples/radial-repeat.json">Radial Repeat</option>
-                    <option value="examples/triplet-test.json">Triplet Test</option>
-                    <option value="examples/complex-graph.json">Complex Graph</option>
-                    <option value="examples/mandala-30.json">Mandala (30 nodes)</option>
-                    <option value="examples/edge-cases.json">Edge Cases</option>
-                </select>
-                <button id="new-graph-button">New Graph (Root Only)</button>
-                <button id="export-json-button" class="secondary">Export to JSON</button>
-            </div>
-
-            <!-- Node List -->
-            <div class="panel-section">
-                <h2>Nodes</h2>
-                <div id="node-list"></div>
+                <h2>Select Node</h2>
+                <select id="node-select"></select>
                 <button id="create-node-button">Create New Node</button>
             </div>
 
@@ -345,6 +304,23 @@
                 </div>
 
                 <button id="delete-node-button" class="danger">Delete Node</button>
+            </div>
+
+            <!-- Load/Save Section -->
+            <div class="panel-section">
+                <h2>Load/Save</h2>
+                <button id="new-graph-button">New Graph (Root Only)</button>
+                <button id="export-json-button" class="secondary">Export to JSON</button>
+                <select id="example-select">
+                    <option value="">-- Load Example --</option>
+                    <option value="examples/simple-root.json">Simple Root</option>
+                    <option value="examples/scale-rotate.json">Scale & Rotate</option>
+                    <option value="examples/radial-repeat.json">Radial Repeat</option>
+                    <option value="examples/triplet-test.json">Triplet Test</option>
+                    <option value="examples/complex-graph.json">Complex Graph</option>
+                    <option value="examples/mandala-30.json">Mandala (30 nodes)</option>
+                    <option value="examples/edge-cases.json">Edge Cases</option>
+                </select>
             </div>
         </div>
 

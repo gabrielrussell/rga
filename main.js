@@ -11,7 +11,7 @@ const errorDisplay = document.getElementById('error-display');
 const exampleSelect = document.getElementById('example-select');
 const newGraphButton = document.getElementById('new-graph-button');
 const exportJsonButton = document.getElementById('export-json-button');
-const nodeList = document.getElementById('node-list');
+const nodeSelect = document.getElementById('node-select');
 const createNodeButton = document.getElementById('create-node-button');
 const editorSection = document.getElementById('editor-section');
 const editorNodeId = document.getElementById('editor-node-id');
@@ -65,25 +65,31 @@ function updateUI() {
     updateEditor();
 }
 
-// Update node list in left panel
+// Update node selector dropdown
 function updateNodeList() {
-    nodeList.innerHTML = '';
+    nodeSelect.innerHTML = '<option value="">-- Select a node --</option>';
     if (!currentGraph) return;
 
     currentGraph.getAllNodes().forEach(node => {
-        const item = document.createElement('div');
-        item.className = 'node-item';
-        if (node.isRoot()) item.classList.add('root');
-        if (selectedNodeId === node.id) item.classList.add('selected');
-
-        const label = document.createElement('span');
-        label.textContent = node.isRoot() ? `Node ${node.id} (Root)` : `Node ${node.id}`;
-        item.appendChild(label);
-
-        item.addEventListener('click', () => selectNode(node.id));
-        nodeList.appendChild(item);
+        const option = document.createElement('option');
+        option.value = node.id;
+        option.textContent = node.isRoot() ? `Node ${node.id} (Root)` : `Node ${node.id}`;
+        if (selectedNodeId === node.id) option.selected = true;
+        nodeSelect.appendChild(option);
     });
 }
+
+// Node selector change handler
+nodeSelect.addEventListener('change', (e) => {
+    const nodeId = e.target.value === '' ? null : parseInt(e.target.value);
+    if (nodeId !== null) {
+        selectNode(nodeId);
+    } else {
+        selectedNodeId = null;
+        updateEditor();
+        updateThumbnails();
+    }
+});
 
 // Select a node for editing
 function selectNode(nodeId) {
