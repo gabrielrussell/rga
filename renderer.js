@@ -143,7 +143,8 @@ export class Renderer {
         const radiusPixels = this.mathToPixelDistance(radialRadius);
 
         for (let i = 0; i < radialCount; i++) {
-            const angle = (i * 360) / radialCount;
+            // Subtract 90 degrees so that 0 degrees points up instead of right
+            const angle = (i * 360) / radialCount - 90;
             const angleRad = (angle * Math.PI) / 180;
 
             ctx.save();
