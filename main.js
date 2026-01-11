@@ -6,7 +6,7 @@ import { ColorPalette } from './color.js';
 const VIEWPORT = { minX: -2, maxX: 2, minY: -2, maxY: 2 };
 const CANVAS_SIZE = 800;
 const THUMBNAIL_SIZE = 200;
-const VERSION = '2fe26f2'; // Update with: git rev-parse --short HEAD
+const VERSION = 'a3d2445'; // Update with: git rev-parse --short HEAD
 
 // UI elements
 const errorDisplay = document.getElementById('error-display');
