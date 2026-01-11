@@ -223,7 +223,7 @@ export class Renderer {
         const data = imageData.data;
 
         if (this.useColor) {
-            // Color mode: first invert, then apply depth color to non-white pixels
+            // Color mode: pixels that are black in B&W get depth color, white pixels stay white
             const newColor = this.colorPalette.getColorForLayer(newDepth);
             const rgb = this.hexToRgb(newColor);
 
@@ -231,21 +231,20 @@ export class Renderer {
                 const a = data[i + 3];
 
                 if (a > 0) {
-                    // First, invert the RGB values
-                    const invR = 255 - data[i];
-                    const invG = 255 - data[i + 1];
-                    const invB = 255 - data[i + 2];
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
 
-                    // Check if the inverted color is white
-                    const isWhite = invR > 250 && invG > 250 && invB > 250;
+                    // Check if source pixel is dark/black (will invert to white)
+                    const isDark = r < 5 && g < 5 && b < 5;
 
-                    if (isWhite) {
-                        // Keep it white
+                    if (isDark) {
+                        // Dark inverts to white - keep it white
                         data[i] = 255;
                         data[i + 1] = 255;
                         data[i + 2] = 255;
                     } else {
-                        // Replace with depth color
+                        // Light pixels (white) invert to dark - apply depth color
                         data[i] = rgb.r;
                         data[i + 1] = rgb.g;
                         data[i + 2] = rgb.b;
