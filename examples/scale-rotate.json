@@ -1,0 +1,14 @@
+{
+  "nodes": [
+    {
+      "id": 0
+    },
+    {
+      "id": 1,
+      "base_parent": 0,
+      "transform_parent": 0,
+      "scale": 0.5,
+      "rotation": 45
+    }
+  ]
+}

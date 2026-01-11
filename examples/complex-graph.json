@@ -1,0 +1,31 @@
+{
+  "nodes": [
+    {
+      "id": 0
+    },
+    {
+      "id": 1,
+      "base_parent": 0,
+      "transform_parent": 0,
+      "scale": 0.5,
+      "radial_radius": 0.5,
+      "radial_count": 4
+    },
+    {
+      "id": 2,
+      "base_parent": 1,
+      "transform_parent": 0,
+      "scale": 0.3,
+      "rotation": 45
+    },
+    {
+      "id": 3,
+      "base_parent": 2,
+      "transform_parent": 1,
+      "scale": 0.8,
+      "radial_radius": 0.4,
+      "radial_count": 3,
+      "rotation": 60
+    }
+  ]
+}
