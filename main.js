@@ -35,6 +35,7 @@ function clearError() {
 function renderThumbnails(graph) {
     thumbnailGrid.innerHTML = '';
     renderer = new Renderer(VIEWPORT, THUMBNAIL_SIZE);
+    renderer.setGraph(graph);
 
     graph.getAllNodes().forEach(node => {
         const container = document.createElement('div');
@@ -72,6 +73,7 @@ function showFullsize(node) {
     fullsizeCanvas.height = CANVAS_SIZE;
 
     const fullsizeRenderer = new Renderer(VIEWPORT, CANVAS_SIZE);
+    fullsizeRenderer.setGraph(currentGraph);
     try {
         fullsizeRenderer.renderNode(node, fullsizeCanvas);
         fullsizeView.classList.add('visible');
