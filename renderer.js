@@ -89,6 +89,7 @@ export class Renderer {
     /**
      * Get layers for root node
      * Returns array with single layer at depth 0
+     * Always renders as black - colors are applied during inversion
      */
     getRootLayers() {
         const canvas = document.createElement('canvas');
@@ -99,9 +100,8 @@ export class Renderer {
         const center = this.mathToPixel(0, 0);
         const radius = this.mathToPixelDistance(1.0);
 
-        // Use color for depth 0 or black if not using colors
-        const fillColor = this.useColor ? this.colorPalette.getColorForLayer(0) : '#000000';
-        ctx.fillStyle = fillColor;
+        // Always render root as black - colors only applied during inversion
+        ctx.fillStyle = '#000000';
         ctx.beginPath();
         ctx.arc(center.x, center.y, radius, 0, 2 * Math.PI);
         ctx.fill();
