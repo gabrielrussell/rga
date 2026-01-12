@@ -44,6 +44,8 @@ const refreshStatsButton = document.getElementById('refresh-stats-button');
 const fullsizeMemorySpan = document.getElementById('fullsize-memory');
 const thumbnailMemorySpan = document.getElementById('thumbnail-memory');
 const totalMemorySpan = document.getElementById('total-memory');
+const regularColorsDisplay = document.getElementById('regular-colors-display');
+const alternativeColorsDisplay = document.getElementById('alternative-colors-display');
 
 // State
 let currentGraph = null;
@@ -606,6 +608,42 @@ exportJsonButton.addEventListener('click', () => {
     URL.revokeObjectURL(url);
 });
 
+// Update color palette display
+function updateColorPaletteDisplay() {
+    // Clear existing displays
+    regularColorsDisplay.innerHTML = '';
+    alternativeColorsDisplay.innerHTML = '';
+
+    // Show first 28 colors (4 tetrad sets × 7 variants)
+    const numColors = 28;
+
+    for (let i = 0; i < numColors; i++) {
+        // Regular color
+        const regularColor = colorPalette.getColorForLayer(i);
+        const regularSwatch = document.createElement('div');
+        regularSwatch.style.width = '24px';
+        regularSwatch.style.height = '24px';
+        regularSwatch.style.backgroundColor = regularColor;
+        regularSwatch.style.border = '1px solid #ccc';
+        regularSwatch.style.borderRadius = '2px';
+        regularSwatch.title = `Color ${i}: ${regularColor}`;
+        regularColorsDisplay.appendChild(regularSwatch);
+
+        // Alternative color (desaturated)
+        // Use a temporary renderer to get desaturated color
+        const tempRenderer = new Renderer({ minX: 0, maxX: 1, minY: 0, maxY: 1 }, 100, colorPalette);
+        const alternativeColor = tempRenderer.desaturateColor(regularColor);
+        const altSwatch = document.createElement('div');
+        altSwatch.style.width = '24px';
+        altSwatch.style.height = '24px';
+        altSwatch.style.backgroundColor = alternativeColor;
+        altSwatch.style.border = '1px solid #ccc';
+        altSwatch.style.borderRadius = '2px';
+        altSwatch.title = `Color ${i} (alt): ${alternativeColor}`;
+        alternativeColorsDisplay.appendChild(altSwatch);
+    }
+}
+
 // Color controls event listeners
 colorEnabledCheckbox.addEventListener('change', (e) => {
     colorEnabled = e.target.checked;
@@ -615,6 +653,7 @@ colorEnabledCheckbox.addEventListener('change', (e) => {
 
 baseColorPicker.addEventListener('input', (e) => {
     colorPalette.setBaseColor(e.target.value);
+    updateColorPaletteDisplay();
     updateThumbnails();
     updateFullsizePreview();
 });
@@ -697,4 +736,5 @@ refreshStatsButton.addEventListener('click', () => {
 // Initialize on load
 // Set color palette from picker value (in case browser retained a different color after reload)
 colorPalette.setBaseColor(baseColorPicker.value);
+updateColorPaletteDisplay();
 initializeNewGraph();
