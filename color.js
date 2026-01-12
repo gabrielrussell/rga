@@ -149,6 +149,7 @@ export function createLighterVariant(colorHex, lightenAmount = 15, saturateAmoun
 
 /**
  * Generate full color palette with base colors and varied saturation/lightness
+ * Interleaves variants to maintain hue variety throughout the palette
  * @param {string} baseColorHex - Base color in hex format
  * @returns {string[]} Array of hex colors with saturation variation
  */
@@ -156,27 +157,25 @@ export function generateColorPalette(baseColorHex) {
     // Generate base tetradic harmony
     const baseColors = generateTetradicHarmony(baseColorHex);
 
+    // Start with the 4 base tetrad colors
     const palette = [...baseColors];
 
-    // For each base color, create variants with different saturation and lightness
-    for (const baseColor of baseColors) {
-        // Darker, highly saturated
-        palette.push(createDarkerSaturatedVariant(baseColor, 20, 20));
+    // Define variant transformations
+    const variantGenerators = [
+        (color) => createDarkerSaturatedVariant(color, 20, 20),  // Darker, highly saturated
+        (color) => createDarkerSaturatedVariant(color, 25, 10),  // Darker, moderately saturated
+        (color) => createDarkerSaturatedVariant(color, 35, 25),  // Very dark, highly saturated
+        (color) => createDesaturatedVariant(color, 30, 0),       // Desaturated (muted)
+        (color) => createDesaturatedVariant(color, 35, 15),      // Desaturated and lighter (pastel-like)
+        (color) => createLighterVariant(color, 15, 10)           // Lighter, saturated
+    ];
 
-        // Darker, moderately saturated
-        palette.push(createDarkerSaturatedVariant(baseColor, 25, 10));
-
-        // Very dark, highly saturated
-        palette.push(createDarkerSaturatedVariant(baseColor, 35, 25));
-
-        // Desaturated (muted)
-        palette.push(createDesaturatedVariant(baseColor, 30, 0));
-
-        // Desaturated and lighter (pastel-like)
-        palette.push(createDesaturatedVariant(baseColor, 35, 15));
-
-        // Lighter, saturated
-        palette.push(createLighterVariant(baseColor, 15, 10));
+    // Interleave variants: for each variant type, apply to all 4 base colors
+    // This keeps hue variety: [base1-var1, base2-var1, base3-var1, base4-var1, base1-var2, ...]
+    for (const generator of variantGenerators) {
+        for (const baseColor of baseColors) {
+            palette.push(generator(baseColor));
+        }
     }
 
     return palette;
