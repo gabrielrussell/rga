@@ -202,12 +202,8 @@ export class ColorPalette {
      * Get color for a specific layer depth
      */
     getColorForLayer(depth) {
-        if (depth === 0) {
-            // Root layer is always the first color
-            return this.palette[0];
-        }
-        // Cycle through palette for other layers
-        return this.palette[(depth - 1) % this.palette.length];
+        // Cycle through palette starting from index 0
+        return this.palette[depth % this.palette.length];
     }
 
     /**
