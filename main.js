@@ -566,20 +566,29 @@ exportJsonButton.addEventListener('click', () => {
             obj.base_parent = node.baseParent;
             obj.transform_parent = node.transformParent;
             obj.scale = node.scale;
-            obj.radial_radius = node.radialRadius;
-            obj.radial_count = node.radialCount;
-            obj.rotation = node.rotation;
+            // Only include non-default values
+            if (node.radialRadius !== 0) {
+                obj.radial_radius = node.radialRadius;
+            }
+            if (node.radialCount !== 0) {
+                obj.radial_count = node.radialCount;
+            }
+            if (node.rotation !== 0) {
+                obj.rotation = node.rotation;
+            }
         }
         return obj;
     });
 
-    const exportData = {
-        nodes,
-        color_settings: {
+    const exportData = { nodes };
+
+    // Only include color_settings if not using defaults
+    if (!colorEnabled || colorPalette.baseColor !== '#3498db') {
+        exportData.color_settings = {
             enabled: colorEnabled,
             base_color: colorPalette.baseColor
-        }
-    };
+        };
+    }
 
     const json = JSON.stringify(exportData, null, 2);
 
