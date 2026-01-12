@@ -3,7 +3,7 @@
  */
 export class Node {
     constructor(id, baseParent = null, transformParent = null,
-                scale = 1.0, radialRadius = 0, radialCount = 0, rotation = 0) {
+                scale = 1.0, radialRadius = 0, radialCount = 0, rotation = 0, comment = null) {
         this.id = id;
         this.baseParent = baseParent;
         this.transformParent = transformParent;
@@ -11,6 +11,7 @@ export class Node {
         this.radialRadius = radialRadius;
         this.radialCount = radialCount;
         this.rotation = rotation;
+        this.comment = comment;
     }
 
     /**
@@ -78,6 +79,7 @@ export class Graph {
             const radialRadius = nodeData.radial_radius !== undefined ? nodeData.radial_radius : 0;
             const radialCount = nodeData.radial_count !== undefined ? nodeData.radial_count : 0;
             const rotation = nodeData.rotation !== undefined ? nodeData.rotation : 0;
+            const comment = nodeData.comment !== undefined ? nodeData.comment : null;
 
             // Validate non-negative constraints
             if (scale < 0) {
@@ -88,7 +90,7 @@ export class Graph {
             }
 
             const node = new Node(id, baseParent, transformParent,
-                                 scale, radialRadius, radialCount, rotation);
+                                 scale, radialRadius, radialCount, rotation, comment);
             graph.addNode(node);
         }
 

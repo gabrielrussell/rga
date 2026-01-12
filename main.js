@@ -577,6 +577,10 @@ exportJsonButton.addEventListener('click', () => {
                 obj.rotation = node.rotation;
             }
         }
+        // Include comment if present
+        if (node.comment) {
+            obj.comment = node.comment;
+        }
         return obj;
     });
 
