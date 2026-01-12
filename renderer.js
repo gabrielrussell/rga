@@ -72,7 +72,7 @@ export class Renderer {
      * Composites all layers and applies final coloring based on idMatrix
      * Returns statistics for debugging
      */
-    renderNode(node, targetCanvas) {
+    renderNode(node, targetCanvas, colorOffset = 0) {
         // Create internal high-res canvas
         const internalCanvas = document.createElement('canvas');
         internalCanvas.width = this.canvasSize;
@@ -118,7 +118,7 @@ export class Renderer {
         });
 
         // Apply final coloring based on parity and per-image ID mapping
-        this.applyFinalColors(internalCanvas, finalIdMatrix, finalDepthMatrix, idToColorIndex);
+        this.applyFinalColors(internalCanvas, finalIdMatrix, finalDepthMatrix, idToColorIndex, colorOffset);
 
         // Downsample to target canvas with anti-aliasing
         const targetCtx = targetCanvas.getContext('2d');
@@ -199,7 +199,7 @@ export class Renderer {
      * Apply final colors to canvas based on idMatrix and color modes
      * Respects color mode settings for even/odd parity and first/last indices
      */
-    applyFinalColors(canvas, idMatrix, depthMatrix, idToColorIndex) {
+    applyFinalColors(canvas, idMatrix, depthMatrix, idToColorIndex, colorOffset = 0) {
         const ctx = canvas.getContext('2d');
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
@@ -237,8 +237,9 @@ export class Renderer {
                     colorMode = this.colorModes.oddParity;
                 }
 
-                // Apply the selected color mode
-                const rgb = this.getColorForMode(colorMode, id, parity, colorIndex);
+                // Apply the selected color mode with color offset
+                const offsetColorIndex = colorIndex !== null ? colorIndex + colorOffset : null;
+                const rgb = this.getColorForMode(colorMode, id, parity, offsetColorIndex);
                 data[pixelIndex] = rgb.r;
                 data[pixelIndex + 1] = rgb.g;
                 data[pixelIndex + 2] = rgb.b;
