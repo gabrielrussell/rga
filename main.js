@@ -172,7 +172,7 @@ function updateFullsizePreview() {
     fullsizeRenderer.nextPixelId = 0;
 
     try {
-        const stats = fullsizeRenderer.renderNode(node, fullsizeCanvas, node.id);
+        const stats = fullsizeRenderer.renderNode(node, fullsizeCanvas);
         displayPixelStats(stats);
     } catch (error) {
         showError(`Error rendering fullsize node ${node.id}: ${error.message}`);
@@ -344,9 +344,9 @@ function updateThumbnails() {
         // Reset pixel ID counter before each node for consistent color assignment
         renderer.nextPixelId = 0;
 
-        // Render node to thumbnail with color offset based on node ID
+        // Render node to thumbnail
         try {
-            renderer.renderNode(node, canvas, node.id);
+            renderer.renderNode(node, canvas);
         } catch (error) {
             showError(`Error rendering node ${node.id}: ${error.message}`);
         }
