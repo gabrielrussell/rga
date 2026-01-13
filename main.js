@@ -142,8 +142,8 @@ function render() {
     // Set viewport
     gl.viewport(0, 0, canvas.width, canvas.height);
 
-    // Clear
-    gl.clearColor(0, 0, 0, 1);
+    // Clear to grey background so both black and white are visible
+    gl.clearColor(0.5, 0.5, 0.5, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     // Draw fullscreen quad
