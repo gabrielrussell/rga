@@ -230,10 +230,57 @@ vec2 evaluateNodeLimited(int nodeId, vec2 pos, int maxDepth) {
                     if (isRootNode(tp)) {
                         transformValue = evaluateRootCircle(tpos);
                         transformReady = true;
-                    } else if (ready[tp]) {
-                        // Transform parent is ready at original pos, but we need it at tpos
-                        // For now, skip - this requires deeper recursion
-                        continue;
+                    } else if (ready[tp] && maxDepth > 1) {
+                        // Transform parent is ready at original pos, evaluate at tpos
+                        // Build a mini-evaluation for this transform parent chain
+                        int tp_bp = u_nodeBaseParents[tp];
+                        int tp_tp = u_nodeTransformParents[tp];
+
+                        // Evaluate transform parent's base parent at tpos
+                        vec2 tp_base = vec2(0.0, 0.0);
+                        if (tp_bp >= 0) {
+                            if (isRootNode(tp_bp)) {
+                                tp_base = evaluateRootCircle(tpos);
+                            } else if (ready[tp_bp]) {
+                                tp_base = cache[tp_bp]; // Use at original pos - approximation
+                            } else {
+                                continue;
+                            }
+                        }
+
+                        // Evaluate transform parent's transform parent
+                        vec2 tp_transform = vec2(0.0, 0.0);
+                        if (tp_tp >= 0) {
+                            int tp_radial = u_nodeRadialCounts[tp];
+                            if (tp_radial == 0) {
+                                vec2 tp_tpos = inverseTransformForCopy(tpos, tp, 0);
+                                if (isRootNode(tp_tp)) {
+                                    tp_transform = evaluateRootCircle(tp_tpos);
+                                } else {
+                                    continue; // Can't go deeper
+                                }
+                            } else {
+                                bool tp_allReady = true;
+                                for (int j = 0; j < 32; j++) {
+                                    if (j >= tp_radial) break;
+                                    vec2 tp_tpos = inverseTransformForCopy(tpos, tp, j);
+                                    if (isRootNode(tp_tp)) {
+                                        vec2 tp_sample = evaluateRootCircle(tp_tpos);
+                                        if (tp_sample.y > tp_transform.y) {
+                                            tp_transform = tp_sample;
+                                        }
+                                    } else {
+                                        tp_allReady = false;
+                                        break;
+                                    }
+                                }
+                                if (!tp_allReady) continue;
+                            }
+                            tp_transform = invertColor(tp_transform);
+                        }
+
+                        transformValue = composite(tp_base, tp_transform);
+                        transformReady = true;
                     }
                 } else {
                     // Radial repeat
@@ -244,6 +291,61 @@ vec2 evaluateNodeLimited(int nodeId, vec2 pos, int maxDepth) {
 
                         if (isRootNode(tp)) {
                             vec2 sampleValue = evaluateRootCircle(tpos);
+                            if (sampleValue.y > transformValue.y) {
+                                transformValue = sampleValue;
+                            }
+                        } else if (ready[tp] && maxDepth > 1) {
+                            // Similar evaluation as above for each radial copy
+                            int tp_bp = u_nodeBaseParents[tp];
+                            int tp_tp = u_nodeTransformParents[tp];
+
+                            vec2 tp_base = vec2(0.0, 0.0);
+                            if (tp_bp >= 0) {
+                                if (isRootNode(tp_bp)) {
+                                    tp_base = evaluateRootCircle(tpos);
+                                } else if (ready[tp_bp]) {
+                                    tp_base = cache[tp_bp];
+                                } else {
+                                    allReady = false;
+                                    break;
+                                }
+                            }
+
+                            vec2 tp_transform = vec2(0.0, 0.0);
+                            if (tp_tp >= 0) {
+                                int tp_radial = u_nodeRadialCounts[tp];
+                                if (tp_radial == 0) {
+                                    vec2 tp_tpos = inverseTransformForCopy(tpos, tp, 0);
+                                    if (isRootNode(tp_tp)) {
+                                        tp_transform = evaluateRootCircle(tp_tpos);
+                                    } else {
+                                        allReady = false;
+                                        break;
+                                    }
+                                } else {
+                                    bool tp_allReady = true;
+                                    for (int j = 0; j < 32; j++) {
+                                        if (j >= tp_radial) break;
+                                        vec2 tp_tpos = inverseTransformForCopy(tpos, tp, j);
+                                        if (isRootNode(tp_tp)) {
+                                            vec2 tp_sample = evaluateRootCircle(tp_tpos);
+                                            if (tp_sample.y > tp_transform.y) {
+                                                tp_transform = tp_sample;
+                                            }
+                                        } else {
+                                            tp_allReady = false;
+                                            break;
+                                        }
+                                    }
+                                    if (!tp_allReady) {
+                                        allReady = false;
+                                        break;
+                                    }
+                                }
+                                tp_transform = invertColor(tp_transform);
+                            }
+
+                            vec2 sampleValue = composite(tp_base, tp_transform);
                             if (sampleValue.y > transformValue.y) {
                                 transformValue = sampleValue;
                             }
