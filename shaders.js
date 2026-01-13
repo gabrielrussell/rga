@@ -100,28 +100,39 @@ vec2 rotate(vec2 pos, float angleDegrees) {
 }
 
 /**
- * Apply inverse transformations to find source coordinate(s)
- * For now, returns single coordinate (will handle radial repeat later)
+ * Apply inverse transformations for a specific radial copy index
+ * Returns the source coordinate for this particular copy
  */
-vec2 inverseTransform(vec2 pos, int nodeId) {
+vec2 inverseTransformForCopy(vec2 pos, int nodeId, int copyIndex) {
     float scale = u_nodeScales[nodeId];
     float radialRadius = u_nodeRadialRadii[nodeId];
     int radialCount = u_nodeRadialCounts[nodeId];
     float rotation = u_nodeRotations[nodeId];
 
-    // Step 1: Inverse rotation
-    vec2 result = rotate(pos, -rotation);
+    vec2 result = pos;
 
-    // Step 2: Inverse radial repeat (simplified for now - just undo translation)
-    // TODO: Implement proper radial inverse with multiple candidates
+    // Step 1: Inverse rotation (global rotation applied to all)
+    result = rotate(result, -rotation);
+
+    // Step 2: Inverse radial repeat for this specific copy
     if (radialCount > 0) {
-        // For now, just undo the first copy's placement
-        float placementAngle = -90.0; // 0 degrees = top
-        vec2 offset = vec2(
+        // Calculate where this copy was placed
+        float userAngle = float(copyIndex) * 360.0 / float(radialCount);
+        float placementAngle = userAngle + rotation - 90.0;
+
+        // Undo the translation to this copy's position
+        vec2 copyOffset = vec2(
             radialRadius * cos(radians(placementAngle)),
             radialRadius * sin(radians(placementAngle))
         );
-        result -= offset;
+        result -= copyOffset;
+
+        // Undo the rotation applied to this copy
+        float copyRotation = rotation;
+        if (radialCount > 1) {
+            copyRotation += userAngle;
+        }
+        result = rotate(result, -copyRotation);
     }
 
     // Step 3: Inverse scale
@@ -164,12 +175,26 @@ float evaluateNode(int nodeId, vec2 pos, int depth) {
         baseColor = evaluateNode(baseParentId, pos, depth + 1);
     }
 
-    // Evaluate transform parent at inverse-transformed position
+    // Evaluate transform parent at inverse-transformed position(s)
     int transformParentId = u_nodeTransformParents[nodeId];
     float transformColor = 0.0;
     if (transformParentId >= 0) {
-        vec2 transformPos = inverseTransform(pos, nodeId);
-        transformColor = evaluateNode(transformParentId, transformPos, depth + 1);
+        int radialCount = u_nodeRadialCounts[nodeId];
+
+        if (radialCount == 0) {
+            // No radial repeat - single evaluation
+            vec2 transformPos = inverseTransformForCopy(pos, nodeId, 0);
+            transformColor = evaluateNode(transformParentId, transformPos, depth + 1);
+        } else {
+            // Radial repeat - evaluate all copies and take max
+            // This simulates "last copy drawn wins" from forward rendering
+            for (int i = 0; i < 32; i++) {
+                if (i >= radialCount) break;
+                vec2 transformPos = inverseTransformForCopy(pos, nodeId, i);
+                float copyColor = evaluateNode(transformParentId, transformPos, depth + 1);
+                transformColor = max(transformColor, copyColor);
+            }
+        }
 
         // Invert transform color
         transformColor = invertColor(transformColor);
