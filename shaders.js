@@ -194,10 +194,10 @@ vec2 evaluateNode(int nodeId, vec2 pos) {
             for (int i = 0; i < 32; i++) {
                 if (i >= radialCount) break;
                 vec2 tpos = inverseTransformForCopy(pos, nodeId, i);
-                vec2 sample = evaluateRootCircle(tpos);
+                vec2 sampleValue = evaluateRootCircle(tpos);
                 // Take max alpha, average color if both present
-                if (sample.y > transformValue.y) {
-                    transformValue = sample;
+                if (sampleValue.y > transformValue.y) {
+                    transformValue = sampleValue;
                 }
             }
         }
@@ -224,9 +224,9 @@ vec2 evaluateNode(int nodeId, vec2 pos) {
                 for (int i = 0; i < 32; i++) {
                     if (i >= bp_radial) break;
                     vec2 bp_tpos = inverseTransformForCopy(pos, bp, i);
-                    vec2 sample = evaluateRootCircle(bp_tpos);
-                    if (sample.y > bp_transform.y) {
-                        bp_transform = sample;
+                    vec2 sampleValue = evaluateRootCircle(bp_tpos);
+                    if (sampleValue.y > bp_transform.y) {
+                        bp_transform = sampleValue;
                     }
                 }
             }
@@ -245,9 +245,9 @@ vec2 evaluateNode(int nodeId, vec2 pos) {
             for (int i = 0; i < 32; i++) {
                 if (i >= radialCount) break;
                 vec2 tpos = inverseTransformForCopy(pos, nodeId, i);
-                vec2 sample = evaluateRootCircle(tpos);
-                if (sample.y > tpValue.y) {
-                    tpValue = sample;
+                vec2 sampleValue = evaluateRootCircle(tpos);
+                if (sampleValue.y > tpValue.y) {
+                    tpValue = sampleValue;
                 }
             }
         }
