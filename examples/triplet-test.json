@@ -1,0 +1,24 @@
+{
+  "nodes": [
+    {
+      "id": 0,
+      "comment": "Root: black circle"
+    },
+    {
+      "id": 1,
+      "base_parent": 0,
+      "transform_parent": 0,
+      "scale": 0.5,
+      "comment": "Black circle with smaller white circle on top (inverted transform)"
+    },
+    {
+      "id": 2,
+      "base_parent": 1,
+      "transform_parent": 1,
+      "scale": 0.6,
+      "radial_radius": 0.7,
+      "radial_count": 3,
+      "comment": "Triplet of the black-and-white circles"
+    }
+  ]
+}

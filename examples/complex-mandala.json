@@ -1,0 +1,110 @@
+{
+  "nodes": [
+    {
+      "id": 0
+    },
+    {
+      "id": 1,
+      "base_parent": 0,
+      "transform_parent": 0,
+      "scale": 0.35,
+      "radial_radius": 0.6,
+      "radial_count": 6,
+      "rotation": 0
+    },
+    {
+      "id": 2,
+      "base_parent": 0,
+      "transform_parent": 0,
+      "scale": 0.45,
+      "radial_radius": 0,
+      "radial_count": 0,
+      "rotation": 0
+    },
+    {
+      "id": 3,
+      "base_parent": 0,
+      "transform_parent": 0,
+      "scale": 0.12,
+      "radial_radius": 0.8,
+      "radial_count": 12,
+      "rotation": 15
+    },
+    {
+      "id": 4,
+      "base_parent": 0,
+      "transform_parent": 0,
+      "scale": 0.4,
+      "radial_radius": 0.5,
+      "radial_count": 3,
+      "rotation": 0
+    },
+    {
+      "id": 5,
+      "base_parent": 1,
+      "transform_parent": 2,
+      "scale": 0.65,
+      "radial_radius": 0,
+      "radial_count": 0,
+      "rotation": 0
+    },
+    {
+      "id": 6,
+      "base_parent": 3,
+      "transform_parent": 4,
+      "scale": 0.61,
+      "radial_radius": 0,
+      "radial_count": 0,
+      "rotation": 45
+    },
+    {
+      "id": 7,
+      "base_parent": 1,
+      "transform_parent": 3,
+      "scale": 0.6,
+      "radial_radius": 0,
+      "radial_count": 0,
+      "rotation": 15
+    },
+    {
+      "id": 8,
+      "base_parent": 2,
+      "transform_parent": 4,
+      "scale": 0.75,
+      "radial_radius": 0,
+      "radial_count": 0,
+      "rotation": 0
+    },
+    {
+      "id": 9,
+      "base_parent": 5,
+      "transform_parent": 6,
+      "scale": 0.16,
+      "radial_radius": 0.7,
+      "radial_count": 12,
+      "rotation": 0
+    },
+    {
+      "id": 10,
+      "base_parent": 7,
+      "transform_parent": 8,
+      "scale": 0.29,
+      "radial_radius": 0.75,
+      "radial_count": 6,
+      "rotation": 30
+    },
+    {
+      "id": 11,
+      "base_parent": 9,
+      "transform_parent": 10,
+      "scale": 0.55,
+      "radial_radius": 0,
+      "radial_count": 0,
+      "rotation": 0
+    }
+  ],
+  "color_settings": {
+    "enabled": true,
+    "base_color": "#f9f06b"
+  }
+}

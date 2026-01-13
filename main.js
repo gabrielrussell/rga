@@ -319,6 +319,53 @@ newGraphButton.addEventListener('click', () => {
     }
 });
 
+// JSON import/export handlers
+importJsonButton.addEventListener('click', () => {
+    const jsonText = prompt('Paste JSON graph data:');
+    if (!jsonText) return;
+
+    try {
+        const jsonData = JSON.parse(jsonText);
+        currentGraph = Graph.fromJSON(jsonData);
+        selectedNodeId = null;
+        uploadGraphData();
+        updateUI();
+        render();
+        clearError();
+    } catch (error) {
+        showError(`Import failed: ${error.message}`);
+    }
+});
+
+exportJsonButton.addEventListener('click', () => {
+    if (!currentGraph) {
+        showError('No graph to export');
+        return;
+    }
+
+    const nodes = currentGraph.getAllNodes().map(node => ({
+        id: node.id,
+        base_parent: node.baseParent,
+        transform_parent: node.transformParent,
+        scale: node.scale,
+        radial_radius: node.radialRadius,
+        radial_count: node.radialCount,
+        rotation: node.rotation,
+        ...(node.comment && { comment: node.comment })
+    }));
+
+    const jsonData = { nodes };
+    const jsonText = JSON.stringify(jsonData, null, 2);
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(jsonText).then(() => {
+        alert('JSON copied to clipboard!');
+    }).catch(() => {
+        // Fallback: show in alert
+        prompt('Copy this JSON:', jsonText);
+    });
+});
+
 // Slider event handlers
 function updateNodeProperty(property, value) {
     if (selectedNodeId === null || !currentGraph) return;
@@ -378,7 +425,56 @@ transformParentSelect.addEventListener('change', (e) => {
     updateNodeProperty('transformParent', value);
 });
 
+// Example loading
+const examples = [
+    { name: 'Simple Root', file: 'simple-root.json' },
+    { name: 'Scale & Rotate', file: 'scale-rotate.json' },
+    { name: 'Radial Repeat', file: 'radial-repeat.json' },
+    { name: 'Edge Cases', file: 'edge-cases.json' },
+    { name: 'Complex Graph', file: 'complex-graph.json' },
+    { name: 'Triplet Test', file: 'triplet-test.json' },
+    { name: 'Complex Mandala', file: 'complex-mandala.json' },
+    { name: 'Mandala 30', file: 'mandala-30.json' }
+];
+
+function populateExamples() {
+    examples.forEach(example => {
+        const option = document.createElement('option');
+        option.value = example.file;
+        option.textContent = example.name;
+        exampleSelect.appendChild(option);
+    });
+}
+
+async function loadExample(filename) {
+    try {
+        const response = await fetch(`examples/${filename}`);
+        if (!response.ok) {
+            throw new Error(`Failed to load ${filename}`);
+        }
+        const jsonData = await response.json();
+        currentGraph = Graph.fromJSON(jsonData);
+        selectedNodeId = null;
+        uploadGraphData();
+        updateUI();
+        render();
+        clearError();
+    } catch (error) {
+        showError(`Failed to load example: ${error.message}`);
+    }
+}
+
+exampleSelect.addEventListener('change', (e) => {
+    const filename = e.target.value;
+    if (filename) {
+        loadExample(filename);
+        // Reset selector
+        e.target.value = '';
+    }
+});
+
 // Initialize
+populateExamples();
 initGL();
 initializeNewGraph();
 animate();
