@@ -86,6 +86,11 @@ function initGL() {
         uniformLocations = getUniformLocations(gl, program, uniformNames);
 
         gl.useProgram(program);
+
+        // Enable alpha blending so transparent areas show background
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
         clearError();
     } catch (error) {
         showError(`WebGL initialization failed: ${error.message}`);
