@@ -84,7 +84,7 @@ vec2 evaluateRootCircle(vec2 pos) {
 
     // smoothstep for antialiasing at edge
     float alpha = 1.0 - smoothstep(-pixelSize, pixelSize, dist);
-    float color = 0.0; // black circle
+    float color = 1.0; // white circle (so it's visible on black background)
 
     return vec2(color, alpha);
 }
