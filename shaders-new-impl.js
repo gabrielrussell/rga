@@ -168,120 +168,41 @@ struct EvalFrame {
     vec2 transformValue;
     int radialIndex;
 };
+    // Iteratively evaluate nodes up to 32 passes
+    // Each pass can evaluate nodes whose parents are ready
+    for (int pass = 0; pass < 32; pass++) {
+        bool madeProgress = false;
 
-/**
- * Stack-based node evaluator - handles arbitrary depth
- */
-const int MAX_STACK = 64;
+        // Try to evaluate all nodes
+        for (int nid = 0; nid < u_nodeCount; nid++) {
+            if (ready[nid]) continue; // Already evaluated
 
-vec2 evaluateNode(int targetNodeId, vec2 targetPos) {
-    EvalFrame stack[MAX_STACK];
-    int sp = 1;
-    
-    stack[0].nodeId = targetNodeId;
-    stack[0].pos = targetPos;
-    stack[0].phase = 0; // 0=need_base, 1=have_base
-    stack[0].baseValue = vec2(0.0, 0.0);
-    stack[0].transformValue = vec2(0.0, 0.0);
-    stack[0].radialIndex = 0;
-    
-    vec2 result = vec2(0.0, 0.0);
-    bool childReturned = false;
-    
-    for (int i = 0; i < 500; i++) {
-        if (sp == 0) return result;
-        if (sp >= MAX_STACK) return vec2(1.0, 1.0);
-        
-        EvalFrame curr = stack[sp - 1];
-        
-        // Handle root immediately
-        if (isRootNode(curr.nodeId)) {
-            result = evaluateRootCircle(curr.pos);
-            sp--;
-            childReturned = true;
-            continue;
-        }
-        
-        // Handle child return
-        if (childReturned) {
-            childReturned = false;
-            if (curr.phase == 0) {
-                // Returned from base parent
-                curr.baseValue = result;
-                curr.phase = 1;
-                stack[sp - 1] = curr;
-            } else if (curr.phase == 1) {
-                // Returned from transform parent
-                if (result.y > curr.transformValue.y) {
-                    curr.transformValue = result;
-                }
-                stack[sp - 1] = curr;
+            vec2 result = tryEvaluateNode(nid, pos, cache, ready);
+
+            if (result.y >= 0.0) { // Successfully evaluated (not -1)
+                cache[nid] = result;
+                ready[nid] = true;
+                madeProgress = true;
             }
         }
-        
-        int bp = u_nodeBaseParents[curr.nodeId];
-        int tp = u_nodeTransformParents[curr.nodeId];
-        int rc = u_nodeRadialCounts[curr.nodeId];
-        if (rc == 0) rc = 1;
-        
-        if (curr.phase == 0) {
-            // Need base parent
-            if (bp < 0) {
-                curr.baseValue = vec2(0.0, 0.0);
-                curr.phase = 1;
-                stack[sp - 1] = curr;
-            } else if (isRootNode(bp)) {
-                curr.baseValue = evaluateRootCircle(curr.pos);
-                curr.phase = 1;
-                stack[sp - 1] = curr;
-            } else {
-                // Push base parent
-                stack[sp].nodeId = bp;
-                stack[sp].pos = curr.pos;
-                stack[sp].phase = 0;
-                stack[sp].baseValue = vec2(0.0, 0.0);
-                stack[sp].transformValue = vec2(0.0, 0.0);
-                stack[sp].radialIndex = 0;
-                sp++;
-            }
-        } else if (curr.phase == 1) {
-            // Have base, need transform
-            if (tp < 0) {
-                // No transform
-                result = curr.baseValue;
-                sp--;
-                childReturned = true;
-            } else if (curr.radialIndex < rc) {
-                vec2 tpos = inverseTransformForCopy(curr.pos, curr.nodeId, curr.radialIndex);
-                curr.radialIndex++;
-                stack[sp - 1] = curr;
-                
-                if (isRootNode(tp)) {
-                    result = evaluateRootCircle(tpos);
-                    if (result.y > curr.transformValue.y) {
-                        curr.transformValue = result;
-                    }
-                    stack[sp - 1] = curr;
-                } else {
-                    // Push transform parent at tpos
-                    stack[sp].nodeId = tp;
-                    stack[sp].pos = tpos;
-                    stack[sp].phase = 0;
-                    stack[sp].baseValue = vec2(0.0, 0.0);
-                    stack[sp].transformValue = vec2(0.0, 0.0);
-                    stack[sp].radialIndex = 0;
-                    sp++;
-                }
-            } else {
-                // Done with all radial copies
-                result = composite(curr.baseValue, invertColor(curr.transformValue));
-                sp--;
-                childReturned = true;
-            }
+
+        // If we didn't make progress, we're stuck (circular dependency or unsupported pattern)
+        if (!madeProgress) {
+            break;
+        }
+
+        // Check if target node is ready
+        if (ready[nodeId]) {
+            return cache[nodeId];
         }
     }
-    
-    return vec2(1.0, 0.0); // Timeout error (red)
+
+    // Return cached result if available, otherwise transparent
+    if (ready[nodeId]) {
+        return cache[nodeId];
+    }
+
+    return vec2(0.0, 0.0); // Fallback: transparent
 }
 
 /**
@@ -291,10 +212,12 @@ void main() {
     vec2 pixelCoord = gl_FragCoord.xy;
 
     if (u_supersampleFactor <= 1) {
+        // No supersampling - evaluate at pixel center
         vec2 mathCoord = pixelToMath(pixelCoord);
         vec2 result = evaluateNode(u_targetNodeId, mathCoord);
         fragColor = vec4(vec3(result.x), result.y);
     } else {
+        // Supersampling: evaluate at multiple subpixel positions
         vec2 totalValue = vec2(0.0, 0.0);
         int sampleCount = u_supersampleFactor * u_supersampleFactor;
         float step = 1.0 / float(u_supersampleFactor);
