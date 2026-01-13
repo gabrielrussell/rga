@@ -168,99 +168,124 @@ vec2 composite(vec2 base, vec2 transform) {
 }
 
 /**
- * Evaluate a node at a position
- * Returns vec2(color, alpha)
+ * Try to evaluate a single node given cached parent results
+ * Returns vec2(color, alpha) if successful, or vec2(-1, -1) if parents not ready
  */
-vec2 evaluateNode(int nodeId, vec2 pos) {
-    // Quick path for root
+vec2 tryEvaluateNode(int nodeId, vec2 pos, vec2[MAX_NODES] cache, bool[MAX_NODES] ready) {
+    // Root is always ready
     if (isRootNode(nodeId)) {
         return evaluateRootCircle(pos);
     }
 
-    // Pattern: node with root as both parents (depth 1)
     int bp = u_nodeBaseParents[nodeId];
     int tp = u_nodeTransformParents[nodeId];
 
-    if (bp >= 0 && tp >= 0 && isRootNode(bp) && isRootNode(tp)) {
-        // Depth 1: both parents are root
-        vec2 baseValue = evaluateRootCircle(pos);
-
-        vec2 transformValue = vec2(0.0, 0.0);
-        int radialCount = u_nodeRadialCounts[nodeId];
-        if (radialCount == 0) {
-            vec2 tpos = inverseTransformForCopy(pos, nodeId, 0);
-            transformValue = evaluateRootCircle(tpos);
+    // Check if base parent is ready
+    vec2 baseValue = vec2(0.0, 0.0);
+    if (bp >= 0) {
+        if (isRootNode(bp)) {
+            baseValue = evaluateRootCircle(pos);
+        } else if (ready[bp]) {
+            baseValue = cache[bp];
         } else {
+            return vec2(-1.0, -1.0); // Not ready yet
+        }
+    }
+
+    // Evaluate transform parent at inverse-transformed position(s)
+    vec2 transformValue = vec2(0.0, 0.0);
+    if (tp >= 0) {
+        int radialCount = u_nodeRadialCounts[nodeId];
+
+        if (radialCount == 0) {
+            // No radial repeat - single evaluation
+            vec2 tpos = inverseTransformForCopy(pos, nodeId, 0);
+
+            if (isRootNode(tp)) {
+                transformValue = evaluateRootCircle(tpos);
+            } else if (ready[tp]) {
+                // Need to evaluate transform parent at transformed position
+                // For now, we can't do this recursively, so use root evaluation
+                // This is a limitation - transform parent must be root for now
+                return vec2(-1.0, -1.0); // Can't handle non-root transform parent yet
+            } else {
+                return vec2(-1.0, -1.0); // Not ready yet
+            }
+        } else {
+            // Radial repeat - evaluate all copies
             for (int i = 0; i < 32; i++) {
                 if (i >= radialCount) break;
                 vec2 tpos = inverseTransformForCopy(pos, nodeId, i);
-                vec2 sampleValue = evaluateRootCircle(tpos);
-                // Take max alpha, average color if both present
+
+                vec2 sampleValue;
+                if (isRootNode(tp)) {
+                    sampleValue = evaluateRootCircle(tpos);
+                } else {
+                    return vec2(-1.0, -1.0); // Can't handle non-root transform parent yet
+                }
+
                 if (sampleValue.y > transformValue.y) {
                     transformValue = sampleValue;
                 }
             }
         }
 
-        return composite(baseValue, invertColor(transformValue));
+        transformValue = invertColor(transformValue);
     }
 
-    // Pattern: base parent is depth 1, transform parent is root
-    if (bp >= 0 && !isRootNode(bp) && tp >= 0 && isRootNode(tp)) {
-        // Evaluate base parent (one level)
-        int bp_bp = u_nodeBaseParents[bp];
-        int bp_tp = u_nodeTransformParents[bp];
+    return composite(baseValue, transformValue);
+}
 
-        vec2 bpValue = vec2(0.0, 0.0);
-        if (bp_bp >= 0 && bp_tp >= 0 && isRootNode(bp_bp) && isRootNode(bp_tp)) {
-            // Base parent's parents are both root
-            vec2 bp_base = evaluateRootCircle(pos);
-            vec2 bp_transform = vec2(0.0, 0.0);
-            int bp_radial = u_nodeRadialCounts[bp];
-            if (bp_radial == 0) {
-                vec2 bp_tpos = inverseTransformForCopy(pos, bp, 0);
-                bp_transform = evaluateRootCircle(bp_tpos);
-            } else {
-                for (int i = 0; i < 32; i++) {
-                    if (i >= bp_radial) break;
-                    vec2 bp_tpos = inverseTransformForCopy(pos, bp, i);
-                    vec2 sampleValue = evaluateRootCircle(bp_tpos);
-                    if (sampleValue.y > bp_transform.y) {
-                        bp_transform = sampleValue;
-                    }
-                }
-            }
-            bpValue = composite(bp_base, invertColor(bp_transform));
-        } else if (bp_bp >= 0 && isRootNode(bp_bp)) {
-            bpValue = evaluateRootCircle(pos);
-        }
+/**
+ * Evaluate a node at a position using iterative fixed-depth evaluation
+ * Handles graphs up to depth 32
+ */
+vec2 evaluateNode(int nodeId, vec2 pos) {
+    // Cache for node results at this position
+    vec2 cache[MAX_NODES];
+    bool ready[MAX_NODES];
 
-        // Evaluate transform parent (root)
-        vec2 tpValue = vec2(0.0, 0.0);
-        int radialCount = u_nodeRadialCounts[nodeId];
-        if (radialCount == 0) {
-            vec2 tpos = inverseTransformForCopy(pos, nodeId, 0);
-            tpValue = evaluateRootCircle(tpos);
-        } else {
-            for (int i = 0; i < 32; i++) {
-                if (i >= radialCount) break;
-                vec2 tpos = inverseTransformForCopy(pos, nodeId, i);
-                vec2 sampleValue = evaluateRootCircle(tpos);
-                if (sampleValue.y > tpValue.y) {
-                    tpValue = sampleValue;
-                }
+    // Initialize all as not ready
+    for (int i = 0; i < MAX_NODES; i++) {
+        ready[i] = false;
+        cache[i] = vec2(0.0, 0.0);
+    }
+
+    // Iteratively evaluate nodes up to 32 passes
+    // Each pass can evaluate nodes whose parents are ready
+    for (int pass = 0; pass < 32; pass++) {
+        bool madeProgress = false;
+
+        // Try to evaluate all nodes
+        for (int nid = 0; nid < u_nodeCount; nid++) {
+            if (ready[nid]) continue; // Already evaluated
+
+            vec2 result = tryEvaluateNode(nid, pos, cache, ready);
+
+            if (result.y >= 0.0) { // Successfully evaluated (not -1)
+                cache[nid] = result;
+                ready[nid] = true;
+                madeProgress = true;
             }
         }
 
-        return composite(bpValue, invertColor(tpValue));
+        // If we didn't make progress, we're stuck (circular dependency or unsupported pattern)
+        if (!madeProgress) {
+            break;
+        }
+
+        // Check if target node is ready
+        if (ready[nodeId]) {
+            return cache[nodeId];
+        }
     }
 
-    // Fallback: only evaluate base parent if it's root
-    if (bp >= 0 && isRootNode(bp)) {
-        return evaluateRootCircle(pos);
+    // Return cached result if available, otherwise transparent
+    if (ready[nodeId]) {
+        return cache[nodeId];
     }
 
-    return vec2(0.0, 0.0);
+    return vec2(0.0, 0.0); // Fallback: transparent
 }
 
 /**
