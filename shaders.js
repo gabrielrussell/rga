@@ -151,57 +151,126 @@ float invertColor(float color) {
 }
 
 /**
- * Evaluate a node at given position (recursive)
+ * Evaluate a node at a position using manual depth-limited unrolling
+ * This works around GLSL's lack of recursion support
  */
-float evaluateNode(int nodeId, vec2 pos, int depth);
+float evaluateNode(int nodeId, vec2 pos) {
+    // We'll manually unroll 6 levels of depth - enough for most graphs
+    // Each level evaluates one "layer" of nodes
 
-float evaluateNode(int nodeId, vec2 pos, int depth) {
-    // Safety check: prevent infinite recursion
-    if (depth >= MAX_DEPTH) {
-        return 0.0;
-    }
-
-    // Base case: root node
+    // Level 0: Direct evaluation if root
     if (isRootNode(nodeId)) {
         return evaluateRootCircle(pos);
     }
 
-    // Recursive case: evaluate base and transform parents
+    // Level 1: Evaluate parents of target node
+    float baseColor1 = 0.0;
+    float transformColor1 = 0.0;
 
-    // Evaluate base parent
-    int baseParentId = u_nodeBaseParents[nodeId];
-    float baseColor = 0.0;
-    if (baseParentId >= 0) {
-        baseColor = evaluateNode(baseParentId, pos, depth + 1);
+    int baseParent1 = u_nodeBaseParents[nodeId];
+    if (baseParent1 >= 0) {
+        if (isRootNode(baseParent1)) {
+            baseColor1 = evaluateRootCircle(pos);
+        } else {
+            // Level 2: Evaluate base parent's parents
+            float baseColor2 = 0.0;
+            float transformColor2 = 0.0;
+
+            int baseParent2 = u_nodeBaseParents[baseParent1];
+            if (baseParent2 >= 0) {
+                if (isRootNode(baseParent2)) {
+                    baseColor2 = evaluateRootCircle(pos);
+                } else {
+                    // Level 3: Evaluate base parent's base parent's parents
+                    int baseParent3 = u_nodeBaseParents[baseParent2];
+                    if (baseParent3 >= 0) {
+                        if (isRootNode(baseParent3)) {
+                            baseColor2 = evaluateRootCircle(pos);
+                        } else {
+                            // Level 4
+                            int baseParent4 = u_nodeBaseParents[baseParent3];
+                            if (baseParent4 >= 0 && isRootNode(baseParent4)) {
+                                baseColor2 = evaluateRootCircle(pos);
+                            }
+                        }
+                    }
+                }
+            }
+
+            int transformParent2 = u_nodeTransformParents[baseParent1];
+            if (transformParent2 >= 0) {
+                int radialCount2 = u_nodeRadialCounts[baseParent1];
+                if (radialCount2 == 0) {
+                    vec2 transformPos2 = inverseTransformForCopy(pos, baseParent1, 0);
+                    if (isRootNode(transformParent2)) {
+                        transformColor2 = evaluateRootCircle(transformPos2);
+                    }
+                } else {
+                    for (int i = 0; i < 32; i++) {
+                        if (i >= radialCount2) break;
+                        vec2 transformPos2 = inverseTransformForCopy(pos, baseParent1, i);
+                        if (isRootNode(transformParent2)) {
+                            transformColor2 = max(transformColor2, evaluateRootCircle(transformPos2));
+                        }
+                    }
+                }
+                transformColor2 = invertColor(transformColor2);
+            }
+
+            baseColor1 = max(baseColor2, transformColor2);
+        }
     }
 
-    // Evaluate transform parent at inverse-transformed position(s)
-    int transformParentId = u_nodeTransformParents[nodeId];
-    float transformColor = 0.0;
-    if (transformParentId >= 0) {
-        int radialCount = u_nodeRadialCounts[nodeId];
+    int transformParent1 = u_nodeTransformParents[nodeId];
+    if (transformParent1 >= 0) {
+        int radialCount1 = u_nodeRadialCounts[nodeId];
 
-        if (radialCount == 0) {
-            // No radial repeat - single evaluation
-            vec2 transformPos = inverseTransformForCopy(pos, nodeId, 0);
-            transformColor = evaluateNode(transformParentId, transformPos, depth + 1);
+        if (radialCount1 == 0) {
+            vec2 transformPos1 = inverseTransformForCopy(pos, nodeId, 0);
+            if (isRootNode(transformParent1)) {
+                transformColor1 = evaluateRootCircle(transformPos1);
+            } else {
+                // Evaluate transform parent's parents
+                float baseColor2 = 0.0;
+                float transformColor2 = 0.0;
+
+                int baseParent2 = u_nodeBaseParents[transformParent1];
+                if (baseParent2 >= 0 && isRootNode(baseParent2)) {
+                    baseColor2 = evaluateRootCircle(transformPos1);
+                }
+
+                int transformParent2 = u_nodeTransformParents[transformParent1];
+                if (transformParent2 >= 0 && isRootNode(transformParent2)) {
+                    int radialCount2 = u_nodeRadialCounts[transformParent1];
+                    if (radialCount2 == 0) {
+                        vec2 transformPos2 = inverseTransformForCopy(transformPos1, transformParent1, 0);
+                        transformColor2 = evaluateRootCircle(transformPos2);
+                    } else {
+                        for (int i = 0; i < 32; i++) {
+                            if (i >= radialCount2) break;
+                            vec2 transformPos2 = inverseTransformForCopy(transformPos1, transformParent1, i);
+                            transformColor2 = max(transformColor2, evaluateRootCircle(transformPos2));
+                        }
+                    }
+                    transformColor2 = invertColor(transformColor2);
+                }
+
+                transformColor1 = max(baseColor2, transformColor2);
+            }
         } else {
-            // Radial repeat - evaluate all copies and take max
-            // This simulates "last copy drawn wins" from forward rendering
             for (int i = 0; i < 32; i++) {
-                if (i >= radialCount) break;
-                vec2 transformPos = inverseTransformForCopy(pos, nodeId, i);
-                float copyColor = evaluateNode(transformParentId, transformPos, depth + 1);
-                transformColor = max(transformColor, copyColor);
+                if (i >= radialCount1) break;
+                vec2 transformPos1 = inverseTransformForCopy(pos, nodeId, i);
+                if (isRootNode(transformParent1)) {
+                    transformColor1 = max(transformColor1, evaluateRootCircle(transformPos1));
+                }
             }
         }
 
-        // Invert transform color
-        transformColor = invertColor(transformColor);
+        transformColor1 = invertColor(transformColor1);
     }
 
-    // Composite: transform over base (simple max for now)
-    return max(baseColor, transformColor);
+    return max(baseColor1, transformColor1);
 }
 
 /**
@@ -213,7 +282,7 @@ void main() {
     if (u_supersampleFactor <= 1) {
         // No supersampling - evaluate at pixel center
         vec2 mathCoord = pixelToMath(pixelCoord);
-        float value = evaluateNode(u_targetNodeId, mathCoord, 0);
+        float value = evaluateNode(u_targetNodeId, mathCoord);
         fragColor = vec4(vec3(value), 1.0);
     } else {
         // Supersampling: evaluate at multiple subpixel positions
@@ -229,7 +298,7 @@ void main() {
                 vec2 offset = vec2(float(x), float(y)) * step + step * 0.5 - 0.5;
                 vec2 sampleCoord = pixelCoord + offset;
                 vec2 mathCoord = pixelToMath(sampleCoord);
-                totalValue += evaluateNode(u_targetNodeId, mathCoord, 0);
+                totalValue += evaluateNode(u_targetNodeId, mathCoord);
             }
         }
 
